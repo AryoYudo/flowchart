@@ -1,192 +1,310 @@
-# MASTER FLOW DP DAN PEMBAYARAN FULL
+# NagoyaOne ERP — Controlled Development
+## 03 — Roadmap and Gaps
 
-## Standard Role
+**Purpose:** canonical milestone/gap status.
 
-* **Finance (AP)** → Matching, Cash Flow Prediction, Advance Payment, Reconciliation, Closing PO.
-* **Manager Finance** → Approval Cash Flow Prediction & Payment Voucher untuk semua jenis pembayaran.
-* **Bu Janice (Director)** → Approval daftar pembayaran.
-* **Selvia / Finance** → Create Payment Voucher.
-* **HOD Finance** → Approval PO sesuai flow pengadaan.
-* **Accounting (Treasury)** → Prepare transaksi & mencatat realisasi pembayaran.
-* **Bu Janice (Pin Transfer)** → Eksekusi transfer.
-* **Purchasing** → Mengirim PO / Bukti Bayar ke Supplier.
-* **Accounting (Fixed Asset)** → Klasifikasi aset setelah GRN.
+**Canonical status date:** 2026-09-01
 
 ---
 
-# 1. Flow COD / Pembayaran Setelah Barang Diterima
+# 1. Controlled Roadmap M0–M15
 
-```mermaid
-flowchart TD
-    A["Requestor membuat MR"] --> B["Asst HOD Approve MR"]
-    B --> C["Purchasing membuat PO"]
-    C --> D["HOD Purchasing / GM / HOD Finance Approve PO"]
-    D --> E["Purchasing issue PO ke Supplier"]
+| Milestone | Status | Scope |
+|---|---|---|
+| M0 — Governance Foundation | ✅ CLOSED | Controlled-development governance and foundational project rules |
+| M1 — Approval Security & Canonical Identity | ✅ CLOSED | maker/submitter/approver identity, self-approval prevention, security hardening |
+| M2 — Canonical Procure-to-Pay E2E | 🟡 CURRENT | canonical P2P truth, payment, audit, inventory integrity hardening |
+| M3 — Procurement Hardening | ⏳ QUEUED | MR/PR/PO lifecycle, revise/reapprove, supplier/issue/cancel/change/race controls |
+| M4 — Warehouse & Inventory | ⏳ QUEUED | partial GRN, balances, movements, QR/barcode, pickup, asset handoff |
+| M5 — AP Invoice & Matching | ⏳ QUEUED | invoice evidence, matching, plans, mismatch/hold |
+| M6 — Cash Flow & Payment Voucher | ⏳ QUEUED | weekly batch, approvals, voucher package/due-date controls |
+| M7 — Treasury | ⏳ QUEUED | prepare/execute/Transferred/Realized, execution evidence |
+| M8 — Reconciliation & Closing | ⏳ QUEUED | reconciliation, clearing, closing |
+| M9 — Accounting | ⏳ QUEUED | subledger, account determination, automatic journals, GL/AP/GRIR/advance/bank/close |
+| M10 — Tax | ⏳ QUEUED | tax calculation/compliance integration |
+| M11 — Cross-Module Integration | ⏳ QUEUED | end-to-end module contracts |
+| M12 — Platform Controls | ⏳ QUEUED | platform-wide control hardening |
+| M13 — UI/UX | ⏳ QUEUED | final user workflow/UI hardening |
+| M14 — E2E Quality Gate | ⏳ QUEUED | full regression and release quality gate |
+| M15 — UAT / Release / Go-Live | ⏳ QUEUED | UAT, release, cutover, go-live |
 
-    E --> F["Supplier mengirim Barang, Surat Jalan & Invoice"]
+Current location:
 
-    F --> G["Logistics Matching Barang vs Surat Jalan & PO"]
-    G --> H{"Sesuai?"}
-    H -->|Tidak| H1["Retur / Defect Report"]
-    H -->|Ya| I["Logistics membuat & Approve GRN"]
-
-    F --> J["Resepsionis menerima Invoice & Input Log ERP"]
-    J --> K["Finance AP Verifikasi Invoice"]
-
-    I --> L["ERP kirim Data GRN ke AP"]
-    K --> M["Finance AP 3-Way Matching"]
-    L --> M
-
-    M --> N{"Matching Sesuai?"}
-    N -->|Tidak| N1["Hold & Klarifikasi"]
-    N -->|Ya| O["Finance AP membuat Cash Flow Prediction"]
-
-    O --> P["Manager Finance Approve"]
-    P --> Q["Otomatis masuk Table Cash Flow Bu Janice"]
-    Q --> R["Bu Janice Approve Payment List"]
-
-    R --> S["Selvia / Finance Create Payment Voucher"]
-    S --> T["Manager Finance Approve"]
-
-    T --> V["Accounting Treasury Prepare Transaction"]
-    V --> W["Bu Janice Transfer"]
-    W --> X["Accounting Treasury mencatat Realisasi Pembayaran"]
-
-    X --> Y["Purchasing mengirim Bukti Bayar ke Supplier"]
-    X --> Z["Finance AP Verifikasi Kelengkapan Transaksi"]
-    Z --> ZA["Purchase Order Closed"]
-
-    I --> FA["Accounting Fixed Asset menentukan Kategori Aset"]
-    FA --> FB{"Aset?"}
-    FB -->|Ya| FC["Logistics Barcode Aset"]
-    FB -->|Tidak| FD["Serah Terima Non-Aset"]
-    FC --> FE["Barang siap diambil Requestor"]
-    FD --> FE
-```
+`M2 → P1 → GAP-P1-006 ← KITA DI SINI`
 
 ---
 
-# 2. Flow DP Before GRN
+# 2. Progress Estimate
 
-```mermaid
-flowchart TD
-    A["Requestor membuat MR"] --> B["Asst HOD Approve MR"]
-    B --> C["Purchasing membuat PO + Klausul DP"]
-    C --> D["HOD Purchasing / GM / HOD Finance Approve PO"]
+These are planning estimates, not contractual metrics.
 
-    D --> E["Finance AP Matching Data Pengajuan"]
-    E --> F["Finance AP membuat Cash Flow Prediction"]
-    F --> G["Manager Finance Approve"]
-    G --> H["Otomatis masuk Table Cash Flow Bu Janice"]
-    H --> I["Bu Janice Approve Payment List"]
+Current reasonable range after closing GAP-P1-005:
 
-    I --> J["Selvia / Finance membuat<br/>Payment Voucher DP + Pelunasan"]
-    J --> K["Manager Finance Approve"]
+- **Overall Controlled Development:** ~25–28%
+- **M2 Canonical P2P:** ~85–90%
 
-    K --> M["Accounting Treasury Prepare DP"]
-    K --> PV["Payment Voucher Pelunasan<br/>Approved - Waiting Matching"]
+Why M2 is not closed yet:
 
-    M --> N["Bu Janice Transfer DP"]
-    N --> O["Accounting Treasury mencatat Realisasi DP"]
-    O --> P["Purchasing mengirim PO & Bukti DP ke Supplier"]
-    O --> Q["Finance AP mencatat Advance Payment"]
+- GAP-P1-006 has not started beyond task authorization for discovery
+- GAP-P1-007 is not started
+- deferred P2 items remain intentionally outside current P1 closure unless PM reprioritizes
 
-    P --> R["Supplier mengirim Barang, Surat Jalan & Invoice Pelunasan"]
-
-    R --> S["Logistics Matching Barang"]
-    S --> T{"Sesuai?"}
-    T -->|Tidak| T1["Retur / Defect Report"]
-    T -->|Ya| U["Logistics membuat & Approve GRN"]
-
-    R --> V["Resepsionis menerima Invoice Pelunasan"]
-    V --> W["Finance AP Verifikasi Invoice"]
-
-    U --> X["ERP menarik GRN & Data DP"]
-    Q --> X
-    W --> Y["Finance AP 3-Way Matching"]
-    X --> Y
-
-    Y --> Z{"Matching Sesuai?"}
-    Z -->|Tidak| Z1["Hold & Klarifikasi"]
-    Z -->|Ya| AA["Accounting Treasury Prepare Pelunasan"]
-
-    PV --> AA
-
-    AA --> AB["Bu Janice Transfer Pelunasan"]
-    AB --> AC["Accounting Treasury mencatat Realisasi Pelunasan"]
-
-    AC --> AD["Purchasing mengirim Bukti Bayar ke Supplier"]
-    AC --> AE["Finance AP Verifikasi Seluruh Transaksi"]
-    AE --> AF["Purchase Order Closed"]
-
-    U --> AG["Accounting Fixed Asset menentukan Kategori Aset"]
-    AG --> AH{"Aset?"}
-    AH -->|Ya| AI["Logistics Barcode Aset"]
-    AH -->|Tidak| AJ["Serah Terima Non-Aset"]
-```
+Refresh these estimates whenever the current GAP closes or the roadmap scope changes.
 
 ---
 
-# 3. Flow Pembayaran Full Sebelum GRN
+# 3. M2 P1 Gap Status
 
-```mermaid
-flowchart TD
-    A["Requestor membuat MR"] --> B["Asst HOD Approve MR"]
-    B --> C["Purchasing menerima Penawaran / Proforma Invoice"]
-    C --> D["Purchasing membuat PO"]
-    D --> E["HOD Purchasing / GM / HOD Finance Approve PO"]
-
-    E --> F["Finance AP Matching Data Pengajuan"]
-    F --> G["Finance AP membuat Cash Flow Prediction"]
-    G --> H["Manager Finance Approve"]
-    H --> I["Otomatis masuk Table Cash Flow Bu Janice"]
-    I --> J["Bu Janice Approve Payment List"]
-
-    J --> K["Selvia / Finance Create Payment Voucher Full"]
-    K --> L["Manager Finance Approve"]
-
-    L --> N["Accounting Treasury Prepare Full Payment"]
-    N --> O["Bu Janice Transfer Full"]
-    O --> P["Accounting Treasury mencatat Realisasi Pembayaran"]
-
-    P --> Q["Purchasing mengirim PO & Bukti Bayar ke Supplier"]
-    P --> R["Finance AP mencatat Advance Payment"]
-
-    Q --> S["Supplier mengirim Barang, Surat Jalan & Invoice Asli"]
-
-    S --> T["Logistics Matching Barang"]
-    T --> U{"Sesuai?"}
-    U -->|Tidak| U1["Retur / Defect Report"]
-    U -->|Ya| V["Logistics membuat & Approve GRN"]
-
-    S --> W["Resepsionis menerima Invoice Asli"]
-    W --> X["Finance AP Verifikasi Invoice"]
-
-    V --> Y["ERP menarik GRN & Advance Payment"]
-    R --> Y
-
-    X --> Z["Finance AP Closing Reconciliation"]
-    Y --> Z
-
-    Z --> AA{"Reconciliation Sesuai?"}
-    AA -->|Tidak| AA1["Hold & Adjustment"]
-    AA -->|Ya| AB["Finance AP Verifikasi Seluruh Transaksi"]
-    AB --> AC["Purchase Order Closed"]
-
-    V --> AD["Accounting Fixed Asset menentukan Kategori Aset"]
-    AD --> AE{"Aset?"}
-    AE -->|Ya| AF["Logistics Barcode Aset"]
-    AE -->|Tidak| AG["Serah Terima Non-Aset"]
-```
+| GAP | Status | Notes |
+|---|---|---|
+| GAP-P1-001 — Canonical Payment Truth | ✅ CLOSED | canonical supplier-payment truth locked |
+| GAP-P1-002 — Workflow Identity / Cardinality | ✅ CLOSED | exact identity/cardinality through tracking |
+| GAP-P1-003 — Workflow Amount Snapshot / PO Mutation Enforcement | ✅ CLOSED | DEC-026 controlled PO financial revision |
+| GAP-P1-004 — Transaction + Audit Atomicity | ✅ CLOSED | A/B closed; C deferred P2 |
+| GAP-P1-005 — GRN → StockMovement / Inventory Integrity | ✅ CLOSED | A/B and C1–C5 closed; C6 deferred P2 |
+| GAP-P1-006 — Explicit Supplier Payment-Proof Verification | 🟡 CURRENT / NEXT DISCOVERY | next exact task `DISC-P2P-012A`; implementation not started |
+| GAP-P1-007 — Finance Close Multi-AP Allocation Completeness | ⏳ NOT STARTED | known P1/High residual from 008F; queued after P1-006 |
 
 ---
 
-## Standard Penutupan Semua Flow
+# 4. GAP-P1-005 Final Closure
 
-**Bu Janice Transfer**
-→ **Accounting Treasury Record Realisasi**
-→ **Purchasing Kirim Bukti Bayar ke Supplier**
-→ **Finance AP Verifikasi / Reconciliation**
-→ **Purchase Order Closed**
+## P1-005-A — Canonical GRN StockMovement
 
-Dengan standard ini, role ERP tidak berubah-ubah antara COD, DP, dan Full Payment.
+✅ CLOSED
+
+Canonical receipt movement is persisted per posted GRN line with exact provenance.
+
+## P1-005-B — GRN Concurrency / Idempotency
+
+✅ CLOSED
+
+Canonical receipt creation and GRN stock posting were hardened and finalized in commit:
+
+`53e36813f7c5b6ba5275916ce9464e152fd17670`
+
+`fix(inventory): enforce canonical grn stock receipts`
+
+## P1-005-C — Generic / Manual Stock Mutation Integrity
+
+✅ CLOSED for P1 scope
+
+Final state:
+
+- C1 ✅ CLOSED
+- C2 ✅ CLOSED
+- C3 ✅ CLOSED
+- C4 ✅ CLOSED
+- C5 ✅ CLOSED
+- C6 DEFERRED P2
+
+Final pushed commit:
+
+`caaf0add08b9b5d7745cd7ec8eb99fb2ef4a2355`
+
+`fix(inventory): harden stock mutation integrity`
+
+Final integrated validation:
+
+- reviewed task scope: 11 files
+- inventory regression: `60 passed / 0 failed / 0 skipped`
+- API build: SUCCESS, `0 warnings / 0 errors`
+- provider-origin SQLite contention proof preserved
+- no unrelated teammate content absorbed into the task commit
+- normal fast-forward push completed
+- `dev == origin/dev == caaf0ad`
+- working tree clean
+
+`P1-005-C6` remains deferred and must not be silently implemented as part of another task.
+
+---
+
+# 5. Important Verified Commit Chain
+
+Recent controlled chain:
+
+- `306b61e` — `fix(finance): enforce payment voucher package identity`
+- `a13e9ef` — `fix(finance): enforce exact tracking payment identity`
+- `3621a92` — `fix(finance): enforce controlled po financial revision`
+- `52d2f6b` — `fix(p2p): harden transaction and audit atomicity`
+- `53e3681` — `fix(inventory): enforce canonical grn stock receipts`
+- `caaf0ad` — `fix(inventory): harden stock mutation integrity`
+
+Earlier verified 007B–008F chain:
+
+- `c080937`
+- `42b9e15`
+- `32b20d7`
+- `ccfd173`
+- `8f317e8`
+- `849790f`
+- `4f92315`
+- `6d8f562`
+
+Do not replace these with old pre-cherry-pick hashes when describing current `dev` history.
+
+---
+
+# 6. Closed Work Highlights
+
+## M0
+
+Governance foundation complete.
+
+## M1
+
+Approval security / canonical identity complete.
+
+Historical security controls include creator cannot approve own transaction, maker/submitter/approver separation, controlled non-fabricating remediation, and unknown historical actor remains unknown rather than being invented.
+
+## M2 completed control areas
+
+- canonical actual payment truth
+- Director/Treasury separation
+- Transferred semantics
+- legacy direct payment containment
+- explicit AP allocation
+- canonical Pelunasan truth
+- FullPayment reconciliation ownership
+- persisted transfer-evidence gate
+- exact workflow identity/cardinality
+- Payment Voucher package identity
+- tracking cardinality
+- controlled PO financial revision
+- transaction + audit atomicity
+- canonical GRN StockMovement
+- GRN concurrency/idempotency
+- manual stock adjustment integrity
+- direct StockBalance mutation lockdown
+- canonical stock namespace reservation
+- cross-path StockBalance concurrency protection for ManualAdjustment / GRN / Pickup / Return
+
+---
+
+# 7. Deferred Items
+
+## P1-004-C — External Evidence/File Orphan Handling
+
+DEFERRED P2 / Medium.
+
+Do not reopen under unrelated work unless separately authorized.
+
+## P1-005-C6 — Permission Provisioning / Role Ownership
+
+DEFERRED P2.
+
+Existing permission gate stays. Do not invent role seeding.
+
+Other intentionally non-current topics:
+
+- posted-GRN reversal/correction policy
+- opening-stock workflow
+- historical inventory rewrite/reconciliation
+- tracked-state rollback defense-in-depth hardening
+
+---
+
+# 8. External / Baseline Repository Residuals
+
+These are tracked separately and do not reopen GAP-P1-005.
+
+## SupplierBankAccount EF model drift
+
+Status:
+
+`REPOSITORY / MIGRATION CONSISTENCY DEFECT, WAITING PM DECISION.`
+
+First state:
+
+`03ef423bcd3a9adcdc1f7a438f54a4edbfde55f1`
+
+Ownership:
+
+remote baseline / teammate change
+
+Exact mismatch:
+
+runtime ordinary `SupplierId` index vs filtered unique `UX_SupplierBankAccounts_DefaultPerSupplier` in migration/model snapshot.
+
+`caaf0ad` / 011E model delta: NO.
+
+## Baseline seeder failures
+
+Not caused by 011E:
+
+- `MasterFlowSeederRunnerTests`: 3 failures
+- `AdminUserSeederTests`: 2 failures
+
+## Tracked-state residual
+
+`DEFENSE-IN-DEPTH RISK ONLY`
+
+Not a current blocker.
+
+## SQL Server provider caveat
+
+SQLite executable proof does not claim exact SQL Server lock acquisition/key-range/deadlock behavior.
+
+---
+
+# 9. Current GAP — GAP-P1-006
+
+## GAP-P1-006 — Explicit Supplier Payment-Proof Verification
+
+🟡 CURRENT / NEXT DISCOVERY
+
+Current task:
+
+`DISC-P2P-012A`
+
+Status:
+
+`⏳ NEXT / NOT STARTED`
+
+Required next phase:
+
+`DISCOVERY`
+
+Do not jump directly to implementation.
+
+Discovery should establish actual current payment-proof/evidence behavior, ownership, identity, lifecycle gates, replay/catch-up behavior, audit/transaction boundary, and any ambiguity before governance or implementation is authorized.
+
+---
+
+# 10. Next Sequence
+
+Immediate:
+
+`DISC-P2P-012A — GAP-P1-006 Explicit Supplier Payment-Proof Verification`
+
+Then, only after discovery and any required governance:
+
+`GOVERNANCE/DECISION → IMPLEMENTATION → TEST → ACTUAL CODE/DIFF REVIEW → VERIFIED → COMMIT → PUSH`
+
+After GAP-P1-006:
+
+`GAP-P1-007 — Finance Close Multi-AP Allocation Completeness`
+
+unless PM explicitly reprioritizes.
+
+After M2 closes, continue M3–M15 in roadmap order unless governance changes priority.
+
+---
+
+# 11. Progress Bar Snapshot
+
+Overall:
+
+`█████░░░░░░░░░░░░░░░  ~25–28%`
+
+M2:
+
+`█████████████████░░░  ~85–90%`
+
+GAP-P1-005:
+
+`████████████████████  100% P1 scope CLOSED`
+
+Current GAP-P1-006:
+
+`░░░░░░░░░░░░░░░░░░░░  discovery not started`
