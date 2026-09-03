@@ -1,9 +1,9 @@
 # NagoyaOne ERP — Controlled Development
 ## 03 — Roadmap and Gaps
 
-**Purpose:** canonical milestone/gap status.
+**Purpose:** canonical milestone/gap status for M0–M15.
 
-**Canonical status date:** 2026-09-01
+**Canonical status date:** 2026-09-03
 
 ---
 
@@ -13,10 +13,10 @@
 |---|---|---|
 | M0 — Governance Foundation | ✅ CLOSED | Controlled-development governance and foundational project rules |
 | M1 — Approval Security & Canonical Identity | ✅ CLOSED | maker/submitter/approver identity, self-approval prevention, security hardening |
-| M2 — Canonical Procure-to-Pay E2E | 🟡 CURRENT | canonical P2P truth, payment, audit, inventory integrity hardening |
-| M3 — Procurement Hardening | ⏳ QUEUED | MR/PR/PO lifecycle, revise/reapprove, supplier/issue/cancel/change/race controls |
-| M4 — Warehouse & Inventory | ⏳ QUEUED | partial GRN, balances, movements, QR/barcode, pickup, asset handoff |
-| M5 — AP Invoice & Matching | ⏳ QUEUED | invoice evidence, matching, plans, mismatch/hold |
+| M2 — Canonical Procure-to-Pay E2E | ✅ CLOSED | canonical P2P/payment truth, audit, inventory and Finance Close hardening |
+| M3 — Procurement Hardening | 🟡 CURRENT | MR/PO lifecycle, concurrency, revise/reapprove, supplier historical truth |
+| M4 — Warehouse & Inventory | ⏳ QUEUED | partial GRN, balances, movements, pickup/return, asset handoff, warehouse controls |
+| M5 — AP Invoice & Matching | ⏳ QUEUED — DISCOVERY MAPPED | invoice evidence, matching, duplicate prevention, AP concurrency, mismatch/hold |
 | M6 — Cash Flow & Payment Voucher | ⏳ QUEUED | weekly batch, approvals, voucher package/due-date controls |
 | M7 — Treasury | ⏳ QUEUED | prepare/execute/Transferred/Realized, execution evidence |
 | M8 — Reconciliation & Closing | ⏳ QUEUED | reconciliation, clearing, closing |
@@ -30,30 +30,36 @@
 
 Current location:
 
-`M2 → P1 → GAP-P1-006 ← KITA DI SINI`
+`M3 → PROC-P1-002 → PurchaseOrder Optimistic Concurrency ← KITA DI SINI`
+
+Next controlled phase:
+
+`DISC-PROC-005A — READ-ONLY DISCOVERY`
 
 ---
 
-# 2. Progress Estimate
+# 2. Planning Progress Estimate
 
 These are planning estimates, not contractual metrics.
 
-Current reasonable range after closing GAP-P1-005:
+Current reasonable range:
 
-- **Overall Controlled Development:** ~25–28%
-- **M2 Canonical P2P:** ~85–90%
+- **Overall Controlled Development:** ~30–35%
+- **M2 Canonical P2P:** 100% P1 canonical closure
+- **M3 Procurement Hardening:** ~35–45%
 
-Why M2 is not closed yet:
+Why M3 is not closed:
 
-- GAP-P1-006 has not started beyond task authorization for discovery
-- GAP-P1-007 is not started
-- deferred P2 items remain intentionally outside current P1 closure unless PM reprioritizes
+- PurchaseOrder general optimistic concurrency remains
+- Supplier historical snapshot boundary/enforcement remains
+- M3 closure audit has not run
+- residual P1 findings, if discovered, must be closed before milestone closure
 
-Refresh these estimates whenever the current GAP closes or the roadmap scope changes.
+Refresh estimates after each major task or milestone closure.
 
 ---
 
-# 3. M2 P1 Gap Status
+# 3. M2 P1 Gap Status — Final
 
 | GAP | Status | Notes |
 |---|---|---|
@@ -62,249 +68,486 @@ Refresh these estimates whenever the current GAP closes or the roadmap scope cha
 | GAP-P1-003 — Workflow Amount Snapshot / PO Mutation Enforcement | ✅ CLOSED | DEC-026 controlled PO financial revision |
 | GAP-P1-004 — Transaction + Audit Atomicity | ✅ CLOSED | A/B closed; C deferred P2 |
 | GAP-P1-005 — GRN → StockMovement / Inventory Integrity | ✅ CLOSED | A/B and C1–C5 closed; C6 deferred P2 |
-| GAP-P1-006 — Explicit Supplier Payment-Proof Verification | 🟡 CURRENT / NEXT DISCOVERY | next exact task `DISC-P2P-012A`; implementation not started |
-| GAP-P1-007 — Finance Close Multi-AP Allocation Completeness | ⏳ NOT STARTED | known P1/High residual from 008F; queued after P1-006 |
+| GAP-P1-006 — Explicit Supplier Payment-Proof Verification | ✅ CLOSED | canonical execution/verification/evidence path enforced |
+| GAP-P1-007 — Finance Close Multi-AP Allocation Completeness | ✅ CLOSED | DEC-034 + canonical multi-AP completeness enforcement |
+
+M2 P1 remaining business gaps:
+
+`NONE`
+
+Canonical M2 closing head:
+
+`9e5c2c217dcf8cf3351964e4baeddcb5e676d2b7`
+
+M2 status:
+
+`✅ CLOSED / CANONICAL`
 
 ---
 
-# 4. GAP-P1-005 Final Closure
+# 4. M2 Final Closure Highlights
 
-## P1-005-A — Canonical GRN StockMovement
-
-✅ CLOSED
-
-Canonical receipt movement is persisted per posted GRN line with exact provenance.
-
-## P1-005-B — GRN Concurrency / Idempotency
-
-✅ CLOSED
-
-Canonical receipt creation and GRN stock posting were hardened and finalized in commit:
-
-`53e36813f7c5b6ba5275916ce9464e152fd17670`
-
-`fix(inventory): enforce canonical grn stock receipts`
-
-## P1-005-C — Generic / Manual Stock Mutation Integrity
-
-✅ CLOSED for P1 scope
-
-Final state:
-
-- C1 ✅ CLOSED
-- C2 ✅ CLOSED
-- C3 ✅ CLOSED
-- C4 ✅ CLOSED
-- C5 ✅ CLOSED
-- C6 DEFERRED P2
-
-Final pushed commit:
-
-`caaf0add08b9b5d7745cd7ec8eb99fb2ef4a2355`
-
-`fix(inventory): harden stock mutation integrity`
-
-Final integrated validation:
-
-- reviewed task scope: 11 files
-- inventory regression: `60 passed / 0 failed / 0 skipped`
-- API build: SUCCESS, `0 warnings / 0 errors`
-- provider-origin SQLite contention proof preserved
-- no unrelated teammate content absorbed into the task commit
-- normal fast-forward push completed
-- `dev == origin/dev == caaf0ad`
-- working tree clean
-
-`P1-005-C6` remains deferred and must not be silently implemented as part of another task.
-
----
-
-# 5. Important Verified Commit Chain
-
-Recent controlled chain:
-
-- `306b61e` — `fix(finance): enforce payment voucher package identity`
-- `a13e9ef` — `fix(finance): enforce exact tracking payment identity`
-- `3621a92` — `fix(finance): enforce controlled po financial revision`
-- `52d2f6b` — `fix(p2p): harden transaction and audit atomicity`
-- `53e3681` — `fix(inventory): enforce canonical grn stock receipts`
-- `caaf0ad` — `fix(inventory): harden stock mutation integrity`
-
-Earlier verified 007B–008F chain:
-
-- `c080937`
-- `42b9e15`
-- `32b20d7`
-- `ccfd173`
-- `8f317e8`
-- `849790f`
-- `4f92315`
-- `6d8f562`
-
-Do not replace these with old pre-cherry-pick hashes when describing current `dev` history.
-
----
-
-# 6. Closed Work Highlights
-
-## M0
-
-Governance foundation complete.
-
-## M1
-
-Approval security / canonical identity complete.
-
-Historical security controls include creator cannot approve own transaction, maker/submitter/approver separation, controlled non-fabricating remediation, and unknown historical actor remains unknown rather than being invented.
-
-## M2 completed control areas
+Closed canonical controls include:
 
 - canonical actual payment truth
 - Director/Treasury separation
-- Transferred semantics
+- Transferred execution semantics
+- persisted transfer proof
 - legacy direct payment containment
-- explicit AP allocation
-- canonical Pelunasan truth
-- FullPayment reconciliation ownership
-- persisted transfer-evidence gate
 - exact workflow identity/cardinality
-- Payment Voucher package identity
-- tracking cardinality
+- payment-voucher package identity
 - controlled PO financial revision
-- transaction + audit atomicity
-- canonical GRN StockMovement
+- transaction + authoritative audit atomicity
+- canonical GRN stock receipt
 - GRN concurrency/idempotency
-- manual stock adjustment integrity
+- manual stock mutation hardening
 - direct StockBalance mutation lockdown
 - canonical stock namespace reservation
-- cross-path StockBalance concurrency protection for ManualAdjustment / GRN / Pickup / Return
+- cross-path inventory concurrency protection
+- explicit multi-AP allocation snapshot
+- deterministic DP netting
+- canonical AP Paid downstream projection
+- fail-closed Finance Close completeness
+- fail-closed Pelunasan tracking/completion
+- historical Realized ambiguity rejection
+
+Closing Finance validation:
+
+`306 passed / 0 failed / 0 skipped`
+
+No Finance migration/snapshot delta was introduced by the closing commit.
 
 ---
 
-# 7. Deferred Items
+# 5. M3 — Procurement Hardening Full Roadmap
 
-## P1-004-C — External Evidence/File Orphan Handling
+M3 is the current milestone.
 
-DEFERRED P2 / Medium.
+## M3.0 — Procurement Baseline Discovery
 
-Do not reopen under unrelated work unless separately authorized.
+`DISC-PROC-001A`
 
-## P1-005-C6 — Permission Provisioning / Role Ownership
+✅ COMPLETE
 
-DEFERRED P2.
+Known P1 register produced from the baseline:
 
-Existing permission gate stays. Do not invent role seeding.
+- `PROC-P1-001 — ApprovalRequest Canonical Uniqueness`
+- `PROC-P1-002 — Procurement Optimistic Concurrency`
+- `PROC-P1-003 — Supplier Historical Snapshots`
 
-Other intentionally non-current topics:
+---
 
+## M3.1 — PROC-P1-001 ApprovalRequest Canonical Uniqueness
+
+✅ CLOSED
+
+Canonical commit:
+
+`6b603b5dc49cffb381ae30d26e63c61fb300e8c5`
+
+`fix(approvals): enforce canonical request uniqueness`
+
+Locked decision:
+
+`DEC-033`
+
+Canonical identity:
+
+`(ModuleCode, EntityType, EntityId)`
+
+One canonical ApprovalRequest row is reused/reset for resubmission; submission attempts remain historical records.
+
+---
+
+## M3.2 — PROC-P1-002 Procurement Optimistic Concurrency
+
+Split into two controlled slices.
+
+### M3.2A — IMP-PROC-002A MaterialRequest Optimistic Concurrency
+
+✅ CLOSED / CANONICAL
+
+Commit:
+
+`ef415bee053e1cb72721442ad758ccf064288621`
+
+`fix(procurement): enforce material request optimistic concurrency`
+
+Verified controls:
+
+- SQL Server RowVersion
+- client token exposure/requirement
+- EF OriginalValue usage
+- stale-write HTTP 409
+- child-only parent concurrency participation
+- frontend token propagation/refetch/no automatic retry
+- test-only SQLite compatibility
+- true SQL Server concurrency proof
+
+Canonical migration:
+
+`20260903025559_AddMaterialRequestRowVersion`
+
+### M3.2B — PurchaseOrder Optimistic Concurrency
+
+⏳ NEXT
+
+Implementation is **not authorized yet**.
+
+First controlled task:
+
+`DISC-PROC-005A — PurchaseOrder Optimistic Concurrency Scope / Interaction Discovery`
+
+Discovery must map at minimum:
+
+- active PO mutation paths
+- edit/submit/revise/reapprove/issue/cancel concurrency boundaries
+- relationship with existing `ReceiptConcurrencyVersion`
+- GRN/receipt interaction
+- financial-revision interaction with DEC-026
+- frontend token contract
+- migration requirement
+- true SQL Server race-test matrix
+- known canonical `CS8602` warning in `CreatePurchaseOrdersFromMaterialRequestCommandHandler.cs(43,46)`
+
+Do not copy the MaterialRequest design blindly onto PurchaseOrder.
+
+Expected implementation task after discovery/decision:
+
+`IMP-PROC-002B`
+
+---
+
+## M3.3 — PROC-P1-003 Supplier Historical Snapshots
+
+⏳ QUEUED
+
+### M3.3A — Discovery / Boundary
+
+Planned task:
+
+`DISC-PROC-003A — Supplier Historical Snapshot Boundary Discovery`
+
+Must identify which procurement-relevant Supplier fields are:
+
+- live master references
+- already persisted transaction snapshots
+- required historical truth for PO/procurement
+- explicitly deferred to Treasury/Accounting/Tax milestones
+
+Do not automatically snapshot every Supplier field.
+
+Bank/payment identity belongs to Finance/Treasury boundaries where applicable.
+
+Tax identity behavior must respect M10 boundary.
+
+### M3.3B — Implementation
+
+Planned task:
+
+`IMP-PROC-003 — Supplier Historical Snapshot Enforcement`
+
+Target principle:
+
+`later Supplier master changes must not silently rewrite historical procurement truth`
+
+Exact fields and revision semantics require discovery/PM decision first.
+
+---
+
+## M3.4 — M3 Closure Audit
+
+⏳ QUEUED
+
+Planned task:
+
+`DISC-PROC-CLOSE-001A — M3 Procurement Hardening Closure Audit`
+
+Must re-check:
+
+- MR lifecycle
+- PO lifecycle
+- approval identity
+- revise/reapprove
+- issue/cancel
+- stale writes/races
+- supplier historical truth
+- authorization
+- audit durability
+- schema/DB invariants
+- frontend/backend contract
+- active bypasses
+
+M3 does not close merely because known tasks are implemented.
+
+---
+
+## M3.5 — Residual P1 Fixes
+
+`CONDITIONAL`
+
+Create additional `PROC-P1-00X` only when closure discovery proves a real residual P1/high production gap.
+
+Do not invent tasks just to extend the roadmap.
+
+P2/medium findings may be deferred only through explicit PM governance.
+
+---
+
+## M3.6 — M3 Final Closure Gate
+
+M3 becomes ✅ CLOSED only when:
+
+- PROC-P1-001 closed
+- IMP-PROC-002A closed
+- IMP-PROC-002B closed
+- PROC-P1-003 closed
+- no active M3 P1 gap remains
+- closure audit passes
+- required SQL Server concurrency proof passes
+- migrations/snapshot are clean and canonical
+- relevant frontend/backend validation passes or explicit environment block is accepted
+- PM actual code/diff review completed
+- all closure commits are integrated to `dev`
+- canonical governance sources are updated
+
+---
+
+# 6. M5 Discovery Register - Pre-Mapped, Not Active
+
+`DISC-AP-001A` COMPLETE / PM ACCEPTED
+
+M5 implementation remains queued. This discovery must be reused as the baseline when M5 opens; do not re-run the same broad discovery from zero unless M3/M4 or later canonical changes materially alter AP behavior. At M5 entry, perform targeted delta-validation only.
+
+## Discovery maturity cache
+
+| Area | Discovery result |
+|---|---|
+| AP lifecycle | PARTIAL |
+| Three-way matching | PARTIAL |
+| Partial GRN/AP control | PARTIAL |
+| Duplicate supplier invoice DB protection | NO |
+| AP receipt evidence | PARTIAL |
+| AP payment handoff | YES / CANONICAL |
+| AP optimistic concurrency | NO |
+| Active AP payment bypass | NO |
+| M4 blocks all M5 | NO |
+
+## Reusable technical findings
+
+- AP active path: Draft -> Matched/Hold -> Posted -> Paid downstream projection.
+- no active AP edit endpoint was found.
+- AP creation requires existing PO/GRN and posted GRN.
+- Match enforces PO/GRN line relationship, exact received/invoiced quantity alignment, and price alignment after 2-decimal rounding.
+- Draft creation can currently accept mismatching quantity/price; Match later fails closed to Hold.
+- one GRN maps to one AP through unique `GoodReceiveNoteId`.
+- generic AP does not own an authoritative aggregate PO-level invoiced-quantity guard.
+- internal `InvoiceNumber` and `GoodReceiveNoteId` are unique; `SupplierInvoiceNo` is not DB-unique.
+- receipt-log duplicate prevention is application-only and not authoritative against concurrency.
+- receipt log supports create/verify/list; no active cancellation endpoint was found.
+- receipt create and verify currently use the same permission, so independent verifier SoD is not enforced.
+- AP Paid remains downstream projection from canonical realized Finance payment; no active AP payment bypass was found.
+- AP has no general optimistic concurrency token.
+- `Posted` is currently operational AP state; accounting journal/ledger/tax recognition remains M9/M10 scope.
+
+## AP-P1-001 - Supplier Invoice Number Uniqueness & DB Enforcement
+
+Severity: `P1 / critical financial integrity`
+
+Risk:
+
+- duplicate supplier invoice can create duplicate payable candidates
+- concurrent creation can race past application checks
+- case/normalization identity is not authoritative at DB level
+
+Current protection:
+
+- `InvoiceNumber` unique
+- `GoodReceiveNoteId` unique
+- `SupplierInvoiceNo` NOT unique
+
+Migration: YES.
+
+M4 dependency: NO for core duplicate enforcement.
+
+Canonical uniqueness scope is NOT YET LOCKED. No `DEC-035` exists. Before implementation, PM must resolve the exact identity/normalization scope and require duplicate-data audit/fail-closed migration behavior.
+
+Recommended implementation candidate after the decision: `IMP-AP-001A - Supplier Invoice Canonical Uniqueness Enforcement`.
+
+## AP-P1-002 - AP Invoice Optimistic Concurrency & Terminal-State Conflict Handling
+
+Severity: `P1 / high`
+
+Risk:
+
+- concurrent Match/Post/Hold/payment projection can operate from stale AP state
+- receipt verification/attachment also lacks a general optimistic token
+
+Current state: no AP RowVersion/timestamp concurrency token.
+
+Migration likely required if RowVersion is selected.
+
+M4 dependency: NO for core AP concurrency design.
+
+## AP-P1-003 - Receipt Evidence Source, Verification SoD & Cancellation Control
+
+Severity: `P1 conditional / governance-dependent`
+
+Known issues:
+
+- receipt log stores PO/supplier but not `GoodReceiveNoteId`
+- duplicate protection is app-only/exact-case
+- create and verify share `finance.invoice_receipt_log.create`
+- cancellation exists at entity level but no active cancellation endpoint was found
+
+Migration: NO for permission/API-only completion; POSSIBLY YES if GRN linkage becomes canonical.
+
+M4 dependency: only where receipt-source/reversal authority depends on warehouse decisions.
+
+## Missing tests to add when relevant slices open
+
+- duplicate supplier invoice across GRNs/POs
+- concurrent duplicate AP creation
+- concurrent Match/Post/Hold/payment projection
+- direct GRN quantity versus AP quantity mismatch case
+- aggregate AP quantity over PO
+- receipt duplicate race and normalization
+- receipt cancellation and independent verifier
+- controlled AP concurrency conflict response
+- due-date behavior only when its business decision is opened
+
+## Cross-milestone boundary
+
+Do not fold these into M5 without explicit PM authorization:
+
+- M4: posted-GRN reversal/correction and warehouse receipt authority
+- M9: journal/ledger/accounting recognition
+- M10: tax behavior
+- supplier tax/bank snapshot policy: separate cross-milestone decision
+
+Controlled roadmap sequencing remains:
+
+`finish M3 -> M4 -> M5 implementation`
+
+unless PM explicitly changes roadmap order.
+
+---
+
+# 7. Deferred / Follow-Up Items
+
+Existing deferred controls include:
+
+- `P1-004-C` external evidence/file orphan handling — DEFERRED P2 / Medium
+- `P1-005-C6` permission provisioning / role ownership — DEFERRED P2
 - posted-GRN reversal/correction policy
-- opening-stock workflow
-- historical inventory rewrite/reconciliation
-- tracked-state rollback defense-in-depth hardening
+- explicit opening-stock workflow
+- historical inventory reconciliation/repair policy
+- selected defense-in-depth rollback hardening
+
+Do not silently absorb deferred work into unrelated tasks.
 
 ---
 
-# 8. External / Baseline Repository Residuals
+# 8. Important Verified Commit Chain
 
-These are tracked separately and do not reopen GAP-P1-005.
+Recent controlled history:
 
-## SupplierBankAccount EF model drift
+- `52d2f6baf4cba040dfaaae7fb1821641168de783` — `fix(p2p): harden transaction and audit atomicity`
+- `53e36813f7c5b6ba5275916ce9464e152fd17670` — `fix(inventory): enforce canonical grn stock receipts`
+- `caaf0add08b9b5d7745cd7ec8eb99fb2ef4a2355` — `fix(inventory): harden stock mutation integrity`
+- `d34994fa9a7539b3a91a6e610b159ad3eb1c6aaa` — `fix(finance): enforce transfer execution verification`
+- `691cc20dc75c84bc8534e79afed3c6d45b304cad` — platform/model snapshot repair
+- `6b603b5dc49cffb381ae30d26e63c61fb300e8c5` — `fix(approvals): enforce canonical request uniqueness`
+- `31b5bd447d983bf41c63efc0f2377f106c48ce7b` — `test(finance): fix sqlite rowversion compatibility`
+- `ef415bee053e1cb72721442ad758ccf064288621` — `fix(procurement): enforce material request optimistic concurrency`
+- `9e5c2c217dcf8cf3351964e4baeddcb5e676d2b7` — `fix(finance): enforce multi-ap finance close completeness`
 
-Status:
+Historical pre-rebase Finance SHA:
 
-`REPOSITORY / MIGRATION CONSISTENCY DEFECT, WAITING PM DECISION.`
+`8d3cfe154ff3ab52e785770aff17af0fb014e746`
 
-First state:
-
-`03ef423bcd3a9adcdc1f7a438f54a4edbfde55f1`
-
-Ownership:
-
-remote baseline / teammate change
-
-Exact mismatch:
-
-runtime ordinary `SupplierId` index vs filtered unique `UX_SupplierBankAccounts_DefaultPerSupplier` in migration/model snapshot.
-
-`caaf0ad` / 011E model delta: NO.
-
-## Baseline seeder failures
-
-Not caused by 011E:
-
-- `MasterFlowSeederRunnerTests`: 3 failures
-- `AdminUserSeederTests`: 2 failures
-
-## Tracked-state residual
-
-`DEFENSE-IN-DEPTH RISK ONLY`
-
-Not a current blocker.
-
-## SQL Server provider caveat
-
-SQLite executable proof does not claim exact SQL Server lock acquisition/key-range/deadlock behavior.
+Do not describe it as the current `dev` SHA.
 
 ---
 
-# 9. Current GAP — GAP-P1-006
+# 9. Known Current Residuals
 
-## GAP-P1-006 — Explicit Supplier Payment-Proof Verification
+## Canonical API warning
 
-🟡 CURRENT / NEXT DISCOVERY
+`CS8602` — `CreatePurchaseOrdersFromMaterialRequestCommandHandler.cs(43,46)`
 
-Current task:
+Classification:
 
-`DISC-P2P-012A`
+`EXISTING CANONICAL PROC-P1-002A WARNING / NON-FINANCE REGRESSION`
 
-Status:
+Disposition:
 
-`⏳ NEXT / NOT STARTED`
+inspect during the next procurement boundary; do not fix under unrelated work.
 
-Required next phase:
+## Latest broader backend baseline
 
-`DISCOVERY`
+`1057 passed / 10 failed`
 
-Do not jump directly to implementation.
+Known failure classes are baseline/environment/shared DB schema drift; no Finance regression was identified at M2 closure.
 
-Discovery should establish actual current payment-proof/evidence behavior, ownership, identity, lifecycle gates, replay/catch-up behavior, audit/transaction boundary, and any ambiguity before governance or implementation is authorized.
+Do not use unrelated-task scope to normalize these failures.
 
 ---
 
-# 10. Next Sequence
+# 10. Current Sequence
 
-Immediate:
+Immediate controlled sequence:
 
-`DISC-P2P-012A — GAP-P1-006 Explicit Supplier Payment-Proof Verification`
-
-Then, only after discovery and any required governance:
-
-`GOVERNANCE/DECISION → IMPLEMENTATION → TEST → ACTUAL CODE/DIFF REVIEW → VERIFIED → COMMIT → PUSH`
-
-After GAP-P1-006:
-
-`GAP-P1-007 — Finance Close Multi-AP Allocation Completeness`
-
-unless PM explicitly reprioritizes.
-
-After M2 closes, continue M3–M15 in roadmap order unless governance changes priority.
+```text
+M2 ✅ CLOSED
+↓
+M3 CURRENT
+↓
+DISC-PROC-005A
+PurchaseOrder concurrency discovery
+↓
+PM decision if required
+↓
+IMP-PROC-002B
+↓
+PM actual diff review
+↓
+VERIFIED + commit/push/integrate
+↓
+DISC-PROC-003A
+Supplier snapshot boundary
+↓
+IMP-PROC-003
+↓
+M3 closure audit
+↓
+residual P1 only if proven
+↓
+M3 ✅ CLOSED
+↓
+M4
+↓
+M5
+↓
+M6 ... M15
+```
 
 ---
 
 # 11. Progress Bar Snapshot
 
-Overall:
+Overall Controlled Development:
 
-`█████░░░░░░░░░░░░░░░  ~25–28%`
+`███████░░░░░░░░░░░░░  ~30–35%`
 
 M2:
 
-`█████████████████░░░  ~85–90%`
+`████████████████████  100% CLOSED`
 
-GAP-P1-005:
+M3:
 
-`████████████████████  100% P1 scope CLOSED`
+`████████░░░░░░░░░░░░  ~35–45%`
 
-Current GAP-P1-006:
+Current next task:
 
-`░░░░░░░░░░░░░░░░░░░░  discovery not started`
+`DISC-PROC-005A — not started`
