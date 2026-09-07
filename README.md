@@ -1,9 +1,13 @@
 # NagoyaOne ERP — Controlled Development
-## 03 — Roadmap and Gaps
+## M5 — AP Invoice & Matching — Meeting Status Update
 
-**Purpose:** canonical milestone/gap status for M0–M15.
-
-**Canonical status date:** 2026-09-03
+**Purpose:** current executive/PM status for M5 and surrounding roadmap.  
+**Status date:** 2026-09-07  
+**Branch:** `dev`  
+**Current canonical source HEAD:** `f9f34f3ab59359491a3245a9aef87a197ae7e578`  
+**Current milestone:** `M5 — AP Invoice & Matching`  
+**Current gate:** `M5.6 — Cancellation / Recovery`  
+**Governance state:** `GOV-AP-006C = PM VERIFIED`, governance commit/push still pending before final M5.6 closure audit.
 
 ---
 
@@ -11,12 +15,12 @@
 
 | Milestone | Status | Scope |
 |---|---|---|
-| M0 — Governance Foundation | ✅ CLOSED | Controlled-development governance and foundational project rules |
-| M1 — Approval Security & Canonical Identity | ✅ CLOSED | maker/submitter/approver identity, self-approval prevention, security hardening |
-| M2 — Canonical Procure-to-Pay E2E | ✅ CLOSED | canonical P2P/payment truth, audit, inventory and Finance Close hardening |
-| M3 — Procurement Hardening | 🟡 CURRENT | MR/PO lifecycle, concurrency, revise/reapprove, supplier historical truth |
-| M4 — Warehouse & Inventory | ⏳ QUEUED | partial GRN, balances, movements, pickup/return, asset handoff, warehouse controls |
-| M5 — AP Invoice & Matching | ⏳ QUEUED — DISCOVERY MAPPED | invoice evidence, matching, duplicate prevention, AP concurrency, mismatch/hold |
+| M0 — Governance Foundation | ✅ CLOSED | Controlled-development governance, task gates, PM verification, single-writer/direct-dev rules |
+| M1 — Approval Security & Canonical Identity | ✅ CLOSED | maker/submitter/approver identity, approval security, self-approval protection |
+| M2 — Canonical Procure-to-Pay E2E | ✅ CLOSED | canonical P2P/payment truth, audit, Finance Close, inventory/payment integrity |
+| M3 — Procurement Hardening | ✅ CLOSED | MR/PO lifecycle, approval identity, optimistic concurrency, supplier historical truth |
+| M4 — Warehouse & Inventory | ✅ CLOSED / CANONICAL | GRN, StockBalance, StockMovement, pickup/return, warehouse concurrency and controls |
+| M5 — AP Invoice & Matching | 🟡 CURRENT | duplicate invoice protection, AP concurrency, receipt evidence, SoD, cancellation/recovery, payment handoff, AP UX |
 | M6 — Cash Flow & Payment Voucher | ⏳ QUEUED | weekly batch, approvals, voucher package/due-date controls |
 | M7 — Treasury | ⏳ QUEUED | prepare/execute/Transferred/Realized, execution evidence |
 | M8 — Reconciliation & Closing | ⏳ QUEUED | reconciliation, clearing, closing |
@@ -24,521 +28,340 @@
 | M10 — Tax | ⏳ QUEUED | tax calculation/compliance integration |
 | M11 — Cross-Module Integration | ⏳ QUEUED | end-to-end module contracts |
 | M12 — Platform Controls | ⏳ QUEUED | platform-wide control hardening |
-| M13 — UI/UX | ⏳ QUEUED | final user workflow/UI hardening |
+| M13 — UI/UX | ⏳ QUEUED | final cross-module user workflow/UI hardening |
 | M14 — E2E Quality Gate | ⏳ QUEUED | full regression and release quality gate |
 | M15 — UAT / Release / Go-Live | ⏳ QUEUED | UAT, release, cutover, go-live |
 
 Current location:
 
-`M3 → PROC-P1-002 → PurchaseOrder Optimistic Concurrency ← KITA DI SINI`
-
-Next controlled phase:
-
-`DISC-PROC-005A — READ-ONLY DISCOVERY`
+`M5 → M5.6 Cancellation / Recovery → governance reconciliation PM VERIFIED → governance commit/push → Final M5.6 Closure Audit`
 
 ---
 
-# 2. Planning Progress Estimate
+# 2. M5 — Current Detailed Status
 
-These are planning estimates, not contractual metrics.
-
-Current reasonable range:
-
-- **Overall Controlled Development:** ~30–35%
-- **M2 Canonical P2P:** 100% P1 canonical closure
-- **M3 Procurement Hardening:** ~35–45%
-
-Why M3 is not closed:
-
-- PurchaseOrder general optimistic concurrency remains
-- Supplier historical snapshot boundary/enforcement remains
-- M3 closure audit has not run
-- residual P1 findings, if discovered, must be closed before milestone closure
-
-Refresh estimates after each major task or milestone closure.
+| Tahap | Fokus | Buat apa | Status |
+|---|---|---|---|
+| **M5.0** | Startup & Discovery | Memetakan kondisi AP sebenarnya sebelum coding: flow, schema, permission, lifecycle, test, payment boundary, dan gap yang masih reachable. | ✅ **DONE** |
+| **M5.1** | AP-P1-001 Decision & Data Gate | Mengunci aturan identitas `SupplierInvoiceNo`, normalization, duplicate behavior, dan mengecek existing duplicate data sebelum DB enforcement. | ✅ **DONE / DECISION LOCKED** — collision existing data tetap menjadi **deployment gate**, bukan source blocker |
+| **M5.2** | SupplierInvoiceNo Integrity Hardening | Mengimplementasikan proteksi duplicate supplier invoice di database + API, canonicalization, filtered unique index, migration guard, conflict `409`, dan SQL Server validation. | ✅ **CANONICAL / COMPLETE** |
+| **M5.3** | AP Optimistic Concurrency | Mencegah dua user/proses mengubah AP yang sama berdasarkan state stale pada Match/Post/Pay dengan RowVersion, `409 CONCURRENCY_CONFLICT`, fresh token, dan no auto retry. | ✅ **CANONICAL / COMPLETE** |
+| **M5.4** | Receipt Evidence Integrity | Memastikan receipt/evidence AP tidak duplicate, verification aman, independent verifier, RowVersion, DB identity authority, dan race protection. | ✅ **CANONICAL / COMPLETE** |
+| **M5.5** | Permission & SoD | Memisahkan permission dan actor duties: Receipt Create/Verify, AP Matcher/Poster, payment executor/uploader/realizer, serta memblokir impersonation pada financial mutation. | ✅ **CLOSED / CANONICAL** |
+| **M5.6** | Cancellation / Recovery Policy | Mengimplementasikan AP/receipt cancellation yang historis dan aman, RowVersion, Serializable concurrency, identity retention/release, payment dependency fail-closed, audit, dan eligibility safety. | 🟡 **CURRENT — SOURCE IMPLEMENTATION COMPLETE**. B1/B2/B3 canonical, combined regression accepted, governance reconciliation **PM VERIFIED**; menunggu governance commit/push lalu final closure audit |
+| **M5.7** | Payment Handoff Validation | Memastikan AP yang sudah masuk lifecycle pembayaran benar-benar menggunakan canonical payment workflow tanpa duplicate projection atau bypass. | ⏳ **PENDING FORMAL GATE** — fondasi utamanya sudah banyak divalidasi di M5.5–M5.6, tetapi M5.7 belum formal closed |
+| **M5.8** | AP Frontend Operational UX | Membuat UI AP jujur terhadap conflict, evidence, status, permission, cancellation, refresh, error mapping, dan action availability. | ⏳ **PENDING** — AP/Receipt cancellation frontend sengaja dibawa ke sini |
+| **M5.9** | Full AP Regression | Menjalankan regression AP besar setelah seluruh hardening utama selesai agar perubahan satu area tidak merusak area AP lain. | ⏳ **PENDING** — regression besar sudah dilakukan per gate, tetapi M5.9 belum formal complete |
+| **M5.10** | M5 Final Closure Audit | Mengecek seluruh M5: runtime, schema, security, SoD, DB invariants, payment handoff, frontend boundary, regression, dan deployment gaps. | ⏳ **PENDING** |
+| **M5.11** | M5 Closure | PM menutup M5 resmi, governance final canonical, repo clean, lalu membuka milestone berikutnya. | ⏳ **PENDING** |
 
 ---
 
-# 3. M2 P1 Gap Status — Final
+# 3. M5.6 — What Is Already Canonical
 
-| GAP | Status | Notes |
-|---|---|---|
-| GAP-P1-001 — Canonical Payment Truth | ✅ CLOSED | canonical supplier-payment truth locked |
-| GAP-P1-002 — Workflow Identity / Cardinality | ✅ CLOSED | exact identity/cardinality through tracking |
-| GAP-P1-003 — Workflow Amount Snapshot / PO Mutation Enforcement | ✅ CLOSED | DEC-026 controlled PO financial revision |
-| GAP-P1-004 — Transaction + Audit Atomicity | ✅ CLOSED | A/B closed; C deferred P2 |
-| GAP-P1-005 — GRN → StockMovement / Inventory Integrity | ✅ CLOSED | A/B and C1–C5 closed; C6 deferred P2 |
-| GAP-P1-006 — Explicit Supplier Payment-Proof Verification | ✅ CLOSED | canonical execution/verification/evidence path enforced |
-| GAP-P1-007 — Finance Close Multi-AP Allocation Completeness | ✅ CLOSED | DEC-034 + canonical multi-AP completeness enforcement |
+## B1 — AP Cancellation Status / Domain / Schema
 
-M2 P1 remaining business gaps:
+✅ `IMP-AP-006B1 — CANONICAL`
 
-`NONE`
+Implemented:
 
-Canonical M2 closing head:
-
-`9e5c2c217dcf8cf3351964e4baeddcb5e676d2b7`
-
-M2 status:
-
-`✅ CLOSED / CANONICAL`
-
----
-
-# 4. M2 Final Closure Highlights
-
-Closed canonical controls include:
-
-- canonical actual payment truth
-- Director/Treasury separation
-- Transferred execution semantics
-- persisted transfer proof
-- legacy direct payment containment
-- exact workflow identity/cardinality
-- payment-voucher package identity
-- controlled PO financial revision
-- transaction + authoritative audit atomicity
-- canonical GRN stock receipt
-- GRN concurrency/idempotency
-- manual stock mutation hardening
-- direct StockBalance mutation lockdown
-- canonical stock namespace reservation
-- cross-path inventory concurrency protection
-- explicit multi-AP allocation snapshot
-- deterministic DP netting
-- canonical AP Paid downstream projection
-- fail-closed Finance Close completeness
-- fail-closed Pelunasan tracking/completion
-- historical Realized ambiguity rejection
-
-Closing Finance validation:
-
-`306 passed / 0 failed / 0 skipped`
-
-No Finance migration/snapshot delta was introduced by the closing commit.
-
----
-
-# 5. M3 — Procurement Hardening Full Roadmap
-
-M3 is the current milestone.
-
-## M3.0 — Procurement Baseline Discovery
-
-`DISC-PROC-001A`
-
-✅ COMPLETE
-
-Known P1 register produced from the baseline:
-
-- `PROC-P1-001 — ApprovalRequest Canonical Uniqueness`
-- `PROC-P1-002 — Procurement Optimistic Concurrency`
-- `PROC-P1-003 — Supplier Historical Snapshots`
-
----
-
-## M3.1 — PROC-P1-001 ApprovalRequest Canonical Uniqueness
-
-✅ CLOSED
+- `ApInvoiceStatus.Cancelled = 5`
+- AP cancellation metadata: `CancelledAt`, `CancelledByUserId`, `CancellationReason`
+- only `Draft/Hold -> Cancelled`
+- `Matched/Posted/Paid/Cancelled -> Cancelled` rejected
+- Cancelled is terminal
+- SupplierInvoiceNo identity retained
+- GoodReceiveNoteId identity retained
+- no hard delete
+- forward migration and DB invariant
 
 Canonical commit:
 
-`6b603b5dc49cffb381ae30d26e63c61fb300e8c5`
+`3aada3ac9f1397e755de20190f6950de9641df92`
 
-`fix(approvals): enforce canonical request uniqueness`
+## B2 — Receipt Cancellation Runtime
 
-Locked decision:
+✅ `IMP-AP-006B2 — CANONICAL`
 
-`DEC-033`
+Implemented:
 
-Canonical identity:
+- `POST /api/ap-invoices/receipt-logs/{id}/cancel`
+- permission `finance.invoice_receipt_log.cancel`
+- initial business role: `finance.ap`
+- RowVersion concurrency
+- explicit Serializable transaction
+- attached receipt hard-block
+- Cancel-vs-Verify safety
+- Cancel-vs-Attach safety
+- replacement receipt identity safety
+- transactional audit
+- impersonation forbidden
 
-`(ModuleCode, EntityType, EntityId)`
+Canonical commit:
 
-One canonical ApprovalRequest row is reused/reset for resubmission; submission attempts remain historical records.
+`767d72247c95b94d26a86222b91a415393db19a9`
 
----
+## B3 — AP Cancellation Runtime
 
-## M3.2 — PROC-P1-002 Procurement Optimistic Concurrency
+✅ `IMP-AP-006B3 — CANONICAL`
 
-Split into two controlled slices.
+Implemented:
 
-### M3.2A — IMP-PROC-002A MaterialRequest Optimistic Concurrency
+- `POST /api/ap-invoices/{id}/cancel`
+- permission `finance.ap_invoice.cancel`
+- initial business role: `finance.ap`
+- AP RowVersion concurrency
+- explicit Serializable transaction
+- payment dependency fail-closed
+- Cancel-vs-Match safety
+- Cancel-vs-Allocation protection
+- Cancelled excluded from Match/re-Match, Post, legacy `/pay`, canonical Paid projection, new allocation, Realize, reconciliation, cash-flow candidates, readiness, pickup, and active AP workflow semantics
+- transactional audit
+- impersonation forbidden
+- no payment reversal
+- no receipt detach
+- no SupplierInvoiceNo/GRN identity release
 
-✅ CLOSED / CANONICAL
+Canonical commit:
 
-Commit:
-
-`ef415bee053e1cb72721442ad758ccf064288621`
-
-`fix(procurement): enforce material request optimistic concurrency`
-
-Verified controls:
-
-- SQL Server RowVersion
-- client token exposure/requirement
-- EF OriginalValue usage
-- stale-write HTTP 409
-- child-only parent concurrency participation
-- frontend token propagation/refetch/no automatic retry
-- test-only SQLite compatibility
-- true SQL Server concurrency proof
-
-Canonical migration:
-
-`20260903025559_AddMaterialRequestRowVersion`
-
-### M3.2B — PurchaseOrder Optimistic Concurrency
-
-⏳ NEXT
-
-Implementation is **not authorized yet**.
-
-First controlled task:
-
-`DISC-PROC-005A — PurchaseOrder Optimistic Concurrency Scope / Interaction Discovery`
-
-Discovery must map at minimum:
-
-- active PO mutation paths
-- edit/submit/revise/reapprove/issue/cancel concurrency boundaries
-- relationship with existing `ReceiptConcurrencyVersion`
-- GRN/receipt interaction
-- financial-revision interaction with DEC-026
-- frontend token contract
-- migration requirement
-- true SQL Server race-test matrix
-- known canonical `CS8602` warning in `CreatePurchaseOrdersFromMaterialRequestCommandHandler.cs(43,46)`
-
-Do not copy the MaterialRequest design blindly onto PurchaseOrder.
-
-Expected implementation task after discovery/decision:
-
-`IMP-PROC-002B`
+`f9f34f3ab59359491a3245a9aef87a197ae7e578`
 
 ---
 
-## M3.3 — PROC-P1-003 Supplier Historical Snapshots
+# 4. M5.6 Combined Validation Evidence
 
-⏳ QUEUED
+`VAL-AP-006C = COMPLETE / PM ACCEPTED`
 
-### M3.3A — Discovery / Boundary
+Focused combined validation:
 
-Planned task:
+`228 PASS / 0 FAIL / 0 SKIP`
 
-`DISC-PROC-003A — Supplier Historical Snapshot Boundary Discovery`
+Full backend regression:
 
-Must identify which procurement-relevant Supplier fields are:
+`1395 PASS / 14 accepted existing/environment FAIL / 0 SKIP / 1409 TOTAL`
 
-- live master references
-- already persisted transaction snapshots
-- required historical truth for PO/procurement
-- explicitly deferred to Treasury/Accounting/Tax milestones
+Build:
 
-Do not automatically snapshot every Supplier field.
+`0 errors / 5 existing warnings`
 
-Bank/payment identity belongs to Finance/Treasury boundaries where applicable.
+EF model validation:
 
-Tax identity behavior must respect M10 boundary.
+`No changes have been made to the model since the last migration.`
 
-### M3.3B — Implementation
+Conclusion:
 
-Planned task:
-
-`IMP-PROC-003 — Supplier Historical Snapshot Enforcement`
-
-Target principle:
-
-`later Supplier master changes must not silently rewrite historical procurement truth`
-
-Exact fields and revision semantics require discovery/PM decision first.
+- no M5.6-specific regression blocker
+- no current P1 cancellation production defect found
+- M5.6 backend source implementation is complete
+- source closure now depends on governance/final closure sequencing, not new coding
 
 ---
 
-## M3.4 — M3 Closure Audit
+# 5. Current M5.6 Governance Gate
 
-⏳ QUEUED
+`GOV-AP-006C = PM VERIFIED`
 
-Planned task:
+Governance reconciliation already passed actual-diff review.
 
-`DISC-PROC-CLOSE-001A — M3 Procurement Hardening Closure Audit`
+It reconciles:
 
-Must re-check:
+- B1/B2/B3 canonical status
+- VAL-AP-006C accepted evidence
+- current M5.6 status
+- historical/superseded roadmap entries
+- recovery/correction deferment
+- frontend M5.8 ownership
+- source-vs-deployment distinction
 
-- MR lifecycle
-- PO lifecycle
-- approval identity
-- revise/reapprove
-- issue/cancel
-- stale writes/races
-- supplier historical truth
-- authorization
-- audit durability
-- schema/DB invariants
-- frontend/backend contract
-- active bypasses
+Current action:
 
-M3 does not close merely because known tasks are implemented.
+`GOV-AP-006C verified governance patch -> commit/push -> clean baseline`
 
----
+After that:
 
-## M3.5 — Residual P1 Fixes
+`M5.6 Final Closure Audit`
 
-`CONDITIONAL`
-
-Create additional `PROC-P1-00X` only when closure discovery proves a real residual P1/high production gap.
-
-Do not invent tasks just to extend the roadmap.
-
-P2/medium findings may be deferred only through explicit PM governance.
+M5.6 is **NOT yet formally CLOSED**.
 
 ---
 
-## M3.6 — M3 Final Closure Gate
+# 6. What Cancellation Means
 
-M3 becomes ✅ CLOSED only when:
+Canonical policy:
 
-- PROC-P1-001 closed
-- IMP-PROC-002A closed
-- IMP-PROC-002B closed
-- PROC-P1-003 closed
-- no active M3 P1 gap remains
-- closure audit passes
-- required SQL Server concurrency proof passes
-- migrations/snapshot are clean and canonical
-- relevant frontend/backend validation passes or explicit environment block is accepted
-- PM actual code/diff review completed
-- all closure commits are integrated to `dev`
-- canonical governance sources are updated
+`CANCEL = TERMINATE / QUARANTINE HISTORY`
+
+It does **not** mean:
+
+- DELETE
+- VOID PAYMENT
+- PAYMENT REVERSAL
+- GRN REVERSAL
+- CORRECT
+- AMEND
+- REPLACE
+- RECREATE
+
+## AP cancellation
+
+Allowed:
+
+- `Draft -> Cancelled`
+- `Hold -> Cancelled`
+
+Forbidden:
+
+- `Matched -> Cancelled`
+- `Posted -> Cancelled`
+- `Paid -> Cancelled`
+
+A Cancelled AP continues occupying:
+
+- `SupplierInvoiceNo` identity
+- `GoodReceiveNoteId` identity
+
+## Receipt cancellation
+
+Allowed only when receipt is unattached:
+
+- `Logged -> Cancelled`
+- `Verified -> Cancelled`
+
+A cancelled receipt releases only its active receipt identity so a replacement receipt can be created while the historical record remains.
 
 ---
 
-# 6. M5 Discovery Register - Pre-Mapped, Not Active
+# 7. Deferred Capability
 
-`DISC-AP-001A` COMPLETE / PM ACCEPTED
+## Recovery / Correction
 
-M5 implementation remains queued. This discovery must be reused as the baseline when M5 opens; do not re-run the same broad discovery from zero unless M3/M4 or later canonical changes materially alter AP behavior. At M5 entry, perform targeted delta-validation only.
+`CORRECT / AMEND / REPLACE = DEFERRED`
 
-## Discovery maturity cache
+Current known limitation:
 
-| Area | Discovery result |
+- Cancelled AP cannot be recreated using the same `SupplierInvoiceNo`
+- Cancelled AP cannot reuse the same `GoodReceiveNoteId`
+- Draft/Hold correction/edit workflow is not yet exposed
+- Posted/Paid reversal is not implemented
+
+This is intentional under the current M5.6 boundary and does **not** block M5.6 source closure.
+
+## Frontend
+
+Cancellation frontend is deferred to:
+
+`M5.8 — AP Frontend Operational UX`
+
+Still pending:
+
+- explicit AP `Cancelled` frontend typing
+- AP Cancel API/client action
+- Receipt Cancel action
+- cancellation reason modal
+- terminal-state visual treatment
+- operational conflict/error UX
+
+Backend cancellation is complete; frontend invocation is not yet implemented.
+
+---
+
+# 8. Source Closure vs Deployment Readiness
+
+These are intentionally separated.
+
+| Area | Status |
 |---|---|
-| AP lifecycle | PARTIAL |
-| Three-way matching | PARTIAL |
-| Partial GRN/AP control | PARTIAL |
-| Duplicate supplier invoice DB protection | NO |
-| AP receipt evidence | PARTIAL |
-| AP payment handoff | YES / CANONICAL |
-| AP optimistic concurrency | NO |
-| Active AP payment bypass | NO |
-| M4 blocks all M5 | NO |
+| M5.6 backend/source implementation | ✅ COMPLETE |
+| M5.6 combined regression | ✅ ACCEPTED |
+| M5.6 governance reconciliation | ✅ PM VERIFIED — commit/push pending |
+| M5.6 final closure audit | ⏳ NEXT AFTER GOVERNANCE COMMIT |
+| M5.6 source closure | ⏳ NOT YET CLOSED |
+| Configured Development DB deployment | ⚠️ NOT READY |
 
-## Reusable technical findings
-
-- AP active path: Draft -> Matched/Hold -> Posted -> Paid downstream projection.
-- no active AP edit endpoint was found.
-- AP creation requires existing PO/GRN and posted GRN.
-- Match enforces PO/GRN line relationship, exact received/invoiced quantity alignment, and price alignment after 2-decimal rounding.
-- Draft creation can currently accept mismatching quantity/price; Match later fails closed to Hold.
-- one GRN maps to one AP through unique `GoodReceiveNoteId`.
-- generic AP does not own an authoritative aggregate PO-level invoiced-quantity guard.
-- internal `InvoiceNumber` and `GoodReceiveNoteId` are unique; `SupplierInvoiceNo` is not DB-unique.
-- receipt-log duplicate prevention is application-only and not authoritative against concurrency.
-- receipt log supports create/verify/list; no active cancellation endpoint was found.
-- receipt create and verify currently use the same permission, so independent verifier SoD is not enforced.
-- AP Paid remains downstream projection from canonical realized Finance payment; no active AP payment bypass was found.
-- AP has no general optimistic concurrency token.
-- `Posted` is currently operational AP state; accounting journal/ledger/tax recognition remains M9/M10 scope.
-
-## AP-P1-001 - Supplier Invoice Number Uniqueness & DB Enforcement
-
-Severity: `P1 / critical financial integrity`
-
-Risk:
-
-- duplicate supplier invoice can create duplicate payable candidates
-- concurrent creation can race past application checks
-- case/normalization identity is not authoritative at DB level
-
-Current protection:
-
-- `InvoiceNumber` unique
-- `GoodReceiveNoteId` unique
-- `SupplierInvoiceNo` NOT unique
-
-Migration: YES.
-
-M4 dependency: NO for core duplicate enforcement.
-
-Canonical uniqueness scope is NOT YET LOCKED. No `DEC-035` exists. Before implementation, PM must resolve the exact identity/normalization scope and require duplicate-data audit/fail-closed migration behavior.
-
-Recommended implementation candidate after the decision: `IMP-AP-001A - Supplier Invoice Canonical Uniqueness Enforcement`.
-
-## AP-P1-002 - AP Invoice Optimistic Concurrency & Terminal-State Conflict Handling
-
-Severity: `P1 / high`
-
-Risk:
-
-- concurrent Match/Post/Hold/payment projection can operate from stale AP state
-- receipt verification/attachment also lacks a general optimistic token
-
-Current state: no AP RowVersion/timestamp concurrency token.
-
-Migration likely required if RowVersion is selected.
-
-M4 dependency: NO for core AP concurrency design.
-
-## AP-P1-003 - Receipt Evidence Source, Verification SoD & Cancellation Control
-
-Severity: `P1 conditional / governance-dependent`
-
-Known issues:
-
-- receipt log stores PO/supplier but not `GoodReceiveNoteId`
-- duplicate protection is app-only/exact-case
-- create and verify share `finance.invoice_receipt_log.create`
-- cancellation exists at entity level but no active cancellation endpoint was found
-
-Migration: NO for permission/API-only completion; POSSIBLY YES if GRN linkage becomes canonical.
-
-M4 dependency: only where receipt-source/reversal authority depends on warehouse decisions.
-
-## Missing tests to add when relevant slices open
-
-- duplicate supplier invoice across GRNs/POs
-- concurrent duplicate AP creation
-- concurrent Match/Post/Hold/payment projection
-- direct GRN quantity versus AP quantity mismatch case
-- aggregate AP quantity over PO
-- receipt duplicate race and normalization
-- receipt cancellation and independent verifier
-- controlled AP concurrency conflict response
-- due-date behavior only when its business decision is opened
-
-## Cross-milestone boundary
-
-Do not fold these into M5 without explicit PM authorization:
-
-- M4: posted-GRN reversal/correction and warehouse receipt authority
-- M9: journal/ledger/accounting recognition
-- M10: tax behavior
-- supplier tax/bank snapshot policy: separate cross-milestone decision
-
-Controlled roadmap sequencing remains:
-
-`finish M3 -> M4 -> M5 implementation`
-
-unless PM explicitly changes roadmap order.
+Deployment not ready does **not** mean source is incomplete.
 
 ---
 
-# 7. Deferred / Follow-Up Items
+# 9. Current Deployment / Data Gates
 
-Existing deferred controls include:
+## M5.2 SupplierInvoiceNo Collision
 
-- `P1-004-C` external evidence/file orphan handling — DEFERRED P2 / Medium
-- `P1-005-C6` permission provisioning / role ownership — DEFERRED P2
-- posted-GRN reversal/correction policy
-- explicit opening-stock workflow
-- historical inventory reconciliation/repair policy
-- selected defense-in-depth rollback hardening
+Existing Development data collision remains:
 
-Do not silently absorb deferred work into unrelated tasks.
+- Supplier: `SUP-000003 / PT. Sanford Batam`
+- `AP26080006` — `Posted` — SupplierInvoiceNo `321321`
+- `AP26080002` — `Draft` — SupplierInvoiceNo `321321`
 
----
+Important:
 
-# 8. Important Verified Commit Chain
+- cancellation does **not** solve this collision
+- a Cancelled AP still occupies SupplierInvoiceNo identity
+- remediation needs a separate controlled data disposition
+- source closure is not blocked by this collision
+- migration/deployment readiness is blocked until disposition is resolved
 
-Recent controlled history:
+## Configured Development DB
 
-- `52d2f6baf4cba040dfaaae7fb1821641168de783` — `fix(p2p): harden transaction and audit atomicity`
-- `53e36813f7c5b6ba5275916ce9464e152fd17670` — `fix(inventory): enforce canonical grn stock receipts`
-- `caaf0add08b9b5d7745cd7ec8eb99fb2ef4a2355` — `fix(inventory): harden stock mutation integrity`
-- `d34994fa9a7539b3a91a6e610b159ad3eb1c6aaa` — `fix(finance): enforce transfer execution verification`
-- `691cc20dc75c84bc8534e79afed3c6d45b304cad` — platform/model snapshot repair
-- `6b603b5dc49cffb381ae30d26e63c61fb300e8c5` — `fix(approvals): enforce canonical request uniqueness`
-- `31b5bd447d983bf41c63efc0f2377f106c48ce7b` — `test(finance): fix sqlite rowversion compatibility`
-- `ef415bee053e1cb72721442ad758ccf064288621` — `fix(procurement): enforce material request optimistic concurrency`
-- `9e5c2c217dcf8cf3351964e4baeddcb5e676d2b7` — `fix(finance): enforce multi-ap finance close completeness`
+Development DB is still behind canonical migration state.
 
-Historical pre-rebase Finance SHA:
+Required future deployment ordering includes:
 
-`8d3cfe154ff3ab52e785770aff17af0fb014e746`
+1. resolve M5.2 data collision disposition
+2. apply canonical pending migrations in controlled order
+3. validate receipt/AP schema alignment
+4. validate permission/role seed alignment
+5. deploy compatible B2/B3 runtime
 
-Do not describe it as the current `dev` SHA.
+No configured Development DB migration/write is authorized by the current source-closure work.
 
----
+## Treasury Drift
 
-# 9. Known Current Residuals
+Known configured-DB drift:
 
-## Canonical API warning
+`finance.treasury.execute`
 
-`CS8602` — `CreatePurchaseOrdersFromMaterialRequestCommandHandler.cs(43,46)`
+Canonical source seeder remains authority.
 
 Classification:
 
-`EXISTING CANONICAL PROC-P1-002A WARNING / NON-FINANCE REGRESSION`
+`DEPLOYMENT / CONFIGURATION GATE`
 
-Disposition:
-
-inspect during the next procurement boundary; do not fix under unrelated work.
-
-## Latest broader backend baseline
-
-`1057 passed / 10 failed`
-
-Known failure classes are baseline/environment/shared DB schema drift; no Finance regression was identified at M2 closure.
-
-Do not use unrelated-task scope to normalize these failures.
+This does not block M5.6 source closure.
 
 ---
 
-# 10. Current Sequence
+# 10. Key Management Talking Points
 
-Immediate controlled sequence:
-
-```text
-M2 ✅ CLOSED
-↓
-M3 CURRENT
-↓
-DISC-PROC-005A
-PurchaseOrder concurrency discovery
-↓
-PM decision if required
-↓
-IMP-PROC-002B
-↓
-PM actual diff review
-↓
-VERIFIED + commit/push/integrate
-↓
-DISC-PROC-003A
-Supplier snapshot boundary
-↓
-IMP-PROC-003
-↓
-M3 closure audit
-↓
-residual P1 only if proven
-↓
-M3 ✅ CLOSED
-↓
-M4
-↓
-M5
-↓
-M6 ... M15
-```
+| Area | Current Condition |
+|---|---|
+| Duplicate supplier invoice protection | ✅ DB + API canonical protection |
+| AP stale/concurrent update | ✅ RowVersion + 409 conflict protection |
+| Receipt/evidence duplicate & race | ✅ DB identity + concurrency protection |
+| Independent receipt verification | ✅ Permission and actor controls |
+| AP Matcher vs Poster SoD | ✅ Enforced |
+| Payment actor SoD | ✅ Enforced |
+| Receipt cancellation | ✅ Backend canonical |
+| AP Draft/Hold cancellation | ✅ Backend canonical |
+| Cancelled AP entering payment | ✅ Blocked |
+| Posted/Paid reversal | ⏳ Future controlled policy, not part of M5.6 |
+| Financial history hard-delete | 🚫 Not allowed |
+| AP identity release after cancellation | 🚫 Not allowed |
+| Receipt active identity release after cancellation | ✅ Allowed when unattached |
+| Frontend cancellation | ⏳ M5.8 |
+| Development DB deployment | ⚠️ Not ready |
+| Existing AP `321321` collision | ⚠️ Still requires controlled remediation |
+| M5.6 source implementation | ✅ Complete |
+| M5.6 formal closure | ⏳ Final closure audit still pending |
 
 ---
 
 # 11. Progress Bar Snapshot
 
+Planning estimate only, not contractual.
+
 Overall Controlled Development:
 
-`███████░░░░░░░░░░░░░  ~30–35%`
+`█████████░░░░░░░░░░░  ~40–45%`
 
 M2:
 
@@ -546,8 +369,83 @@ M2:
 
 M3:
 
-`████████░░░░░░░░░░░░  ~35–45%`
+`████████████████████  100% CLOSED`
+
+M4:
+
+`████████████████████  100% CLOSED / CANONICAL`
+
+M5 backend hardening core:
+
+`███████████████░░░░░  ~70–80% COMPLETE`
+
+M5 overall milestone:
+
+`████████████░░░░░░░░  ~60% ACTIVE`
 
 Current next task:
 
-`DISC-PROC-005A — not started`
+`GOV-AP-006C commit/push → M5.6 Final Closure Audit`
+
+---
+
+# 12. Current Controlled Sequence
+
+```text
+M3 ✅ CLOSED
+↓
+M4 ✅ CLOSED / CANONICAL
+↓
+M5 CURRENT
+↓
+M5.0 ✅ Discovery
+↓
+M5.1 ✅ Decision & Data Gate
+↓
+M5.2 ✅ SupplierInvoiceNo Integrity
+↓
+M5.3 ✅ AP Optimistic Concurrency
+↓
+M5.4 ✅ Receipt Evidence Integrity
+↓
+M5.5 ✅ Permission & SoD CLOSED
+↓
+M5.6 CURRENT
+   ├─ B1 ✅ CANONICAL
+   ├─ B2 ✅ CANONICAL
+   ├─ B3 ✅ CANONICAL
+   ├─ VAL-AP-006C ✅ PM ACCEPTED
+   └─ GOV-AP-006C ✅ PM VERIFIED
+↓
+GOV-AP-006C commit/push
+↓
+M5.6 Final Closure Audit
+↓
+M5.6 source closure decision
+↓
+M5.7 Payment Handoff Validation
+↓
+M5.8 AP Frontend Operational UX
+↓
+M5.9 Full AP Regression
+↓
+M5.10 M5 Final Closure Audit
+↓
+M5.11 M5 Closure
+```
+
+---
+
+# 13. Planning Progress Estimate
+
+Planning estimate only, not contractual.
+
+- **M3:** `100% CLOSED`
+- **M4:** `100% CLOSED / CANONICAL`
+- **M5 backend hardening core:** approximately `70–80% complete`
+- **M5 overall milestone:** approximately `~60% active progress`
+- **Overall Controlled Development:** approximately `~40–45%`, but milestone closure remains the primary management indicator
+
+Recommended management statement:
+
+> **NagoyaOne sudah melewati Procurement dan Warehouse hardening. Saat ini fokus ada di AP Invoice & Matching (M5). Core backend hardening AP—duplicate prevention, concurrency, receipt integrity, permission/SoD, serta AP/receipt cancellation—sudah complete secara source. M5.6 tinggal governance commit dan final closure audit. Setelah itu fokus bergerak ke payment handoff, frontend operational UX, full regression, dan M5 closure. Deployment Development DB masih ditahan oleh migration/data gate yang dikontrol terpisah.**
