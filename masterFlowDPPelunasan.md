@@ -1,283 +1,548 @@
-Berikut adalah perbaikan dan penyelarasan menyeluruh untuk dokumen **Master Flow DP dan Pembayaran Full**.
+Bisa. Aku update **master flow kamu sebagai versi current-state NagoyaOne yang sudah kita bangun sampai M9 sekarang**, tapi tetap pakai gaya penamaan operasional seperti flow kamu.
 
-### 💡 Poin Utama Konsistensi yang Diselaraskan:
+Ada beberapa perubahan penting dibanding flow lama. Yang paling besar: **Bu Janice sebagai Director tetap approval, bukan eksekutor transfer**; eksekusi aktual `WaitingExecution → Transferred` dimiliki Treasury/payment executor. Setelah transfer sekarang juga ada pemisahan **Transferred → Upload Proof → Realized → External Bank Reconciliation → Closed**. Selain itu, di M9 sudah masuk jurnal otomatis GRN, AP, dan Payment Journal dalam boundary tertentu. 
 
-1. **Pemisahan Peran Accounting (Treasury) vs Finance (AP):**
-* **Bu Janice (Pin Transfer)**: Mengeksekusi transfer fisik dana via e-banking setelah transaksi disiapkan di m-banking.
-* **Accounting (Treasury)**: Menyiapkan transaksi pembayaran di m-banking (input nominal, rekening tujuan, dan detail pembayaran), menerbitkan bukti bayar / voucher pembayaran resmi di ERP, dan mengirimkan bukti transfer ke Supplier.
-* **Finance (AP)**: Menerima invoice, verifikasi *3-Way Matching*, pencatatan *Advance Payment*, dan melakukan *Closing Reconciliation*.
+Untuk Fixed Asset aku juga koreksi: klasifikasi Asset/Non-Asset dari GRN boleh tetap muncul sebagai operational metadata, tetapi **Asset Register, capitalization, depreciation, dan barcode asset belum boleh dianggap flow canonical yang sudah jadi**. Fixed Asset handoff dan barcode memang masih future boundary. 
 
+# MASTER FLOW DP DAN PEMBAYARAN FULL — UPDATED NAGOYAONE CURRENT STATE
 
-2. **Standardisasi Pintu Masuk Invoice (Resepsionis):** Di semua alur, Invoice fisik/asli yang datang dari Supplier konsisten diterima oleh **Resepsionis** untuk diinput log penerimaannya ke ERP sebelum diverifikasi oleh **Finance (AP)**.
-3. **Pemberian Tagging Aset Paralel:** Di ketiga alur, setelah GRN disetujui, **Accounting (Fixed Asset)** menentukan kategori aset, sehingga Logistik bisa langsung mencetak barcode tanpa perlu menunggu proses administrasi pembayaran di **Accounting (Treasury)** selesai.
-4. **Penyelarasan Narasi & Diagram:** Narasi di setiap alur telah disesuaikan 100% mengikuti langkah demi langkah yang ada pada flowchart terbaru.
+## Standard Role
+
+* **Finance (AP)** → Verifikasi invoice, 3-Way Matching, AP Post, Cash Flow Prediction, payment allocation, Advance Payment tracking, Finance Close.
+* **Manager Finance** → Approval Cash Flow Prediction dan Payment Voucher.
+* **Bu Janice (Director)** → Approval daftar pembayaran. **Bukan transfer executor.**
+* **Selvia / Finance** → Create Payment Voucher.
+* **HOD Finance** → Final approval Payment Voucher.
+* **Accounting / Treasury — Prepare** → Memilih **Supplier Bank Account + Company Bank Account**, lalu ERP freeze beneficiary dan company-bank/GL provenance.
+* **Accounting / Treasury — Executor** → Release dan melakukan actual transfer.
+* **Accounting / Treasury — Proof Uploader** → Upload bukti transfer.
+* **Treasury / Finance-Accounting — Realization Verifier** → Verifikasi hasil transfer dan mengubah `Transferred → Realized`; actor ini harus memenuhi SoD terhadap executor/uploader.
+* **Finance Reconciliation / Close** → Matching transaksi dengan external bank settlement, mengubah `Realized → Reconciled`, lalu Finance Close jika semua gate terpenuhi.
+* **Purchasing** → Mengirim PO / Bukti Bayar ke Supplier.
+* **ERP Accounting** → Auto Journal pada GRN Posted, AP Posted, dan Payment Reconciled yang memenuhi contract M9.
+* **Accounting Fixed Asset** → **Future controlled handoff**; existing GRN Asset/Non-Asset classification belum berarti capitalization/depreciation.
+
+Canonical payment truth tetap `FinancePaymentWorkflow`, bukan flag `AP Paid`, `PO Closed`, memo, atau marker lain. 
 
 ---
 
-# Master Flow DP dan Pembayaran Full
-
-Dokumen ini dibagi menjadi 3 flowchart terpisah agar lebih mudah dibaca dan dikoreksi:
-
-1. Flow COD / pembayaran setelah barang diterima.
-2. Flow DP before GRN.
-3. Flow pembayaran full sebelum GRN.
-
----
-
-## 1. Flow COD / Pembayaran Setelah Barang Diterima
-
-### Koreksi Utama
-
-* Mengubah aktor penerima invoice dan pencocokan tagihan menjadi **Finance (AP)** dengan bantuan log penerimaan oleh **Resepsionis**.
-* Mengubah eksekusi transfer ke **Bu Janice (Pin Transfer)** dengan tahapan persiapan transaksi di m-banking oleh **Accounting (Treasury)** sebelum PIN diinput.
-* Mengubah pembuatan kategori aset menjadi **Accounting (Fixed Asset)** yang berjalan paralel setelah GRN.
+# 1. Flow COD / Pembayaran Setelah Barang Diterima
 
 ```mermaid
 flowchart TD
-    A["Requestor membuat MR"] --> B["Asst HOD menyetujui MR"]
+
+    A["Requestor membuat MR"] --> B["Asst HOD Approve MR"]
+
     B --> C["Purchasing membuat PO"]
-    C --> D["HOD Purchasing / GM / HOD Finance menyetujui PO"]
-    D --> E["PO di-issue ke Supplier"]
-    
-    E --> F["Supplier mengirim barang, Surat Jalan, & Invoice"]
-    
-    F --> G["Logistics mencocokkan fisik barang dengan Surat Jalan & PO"]
-    G --> H{"Fisik & Spesifikasi Sesuai?"}
-    H -->|Tidak| I1["Logistics membuat Laporan Retur / Defect Report"]
-    H -->|Ya| I["Logistics membuat & menyetujui GRN di ERP"]
-    
-    F --> J["Resepsionis menerima Invoice fisik dari Supplier & menginput Log Penerimaan di ERP"]
-    J --> K["Finance (AP) menerima berkas Invoice & Verifikasi Log ERP"]
-    
-    I --> L["ERP Otomatis membuat Unbilled AP & Kirim Data GRN ke AP"]
-    
-    K --> M["Finance (AP) melakukan 3-Way Matching di ERP <br> (PO, GRN, & Invoice)"]
+
+    C --> D["HOD Purchasing / GM / HOD Finance Approve PO"]
+
+    D --> E["Purchasing Issue PO ke Supplier"]
+
+    E --> F["Supplier mengirim Barang, Surat Jalan & Invoice"]
+
+    F --> G["Logistics Matching Barang vs Surat Jalan & PO"]
+
+    G --> H{"Sesuai?"}
+
+    H -->|Tidak| H1["Retur / Defect Report"]
+
+    H -->|Ya| I["Logistics membuat & Post / Approve GRN"]
+
+    I --> GJ["ERP Auto Posting GRN Journal<br/>Dr Goods Receipt Debit<br/>Cr Goods Receipt Clearing"]
+
+    GJ --> GL["Accounting Journal / General Ledger"]
+
+    F --> J["Resepsionis menerima Invoice & Input Log ERP"]
+
+    J --> K["Finance AP Verifikasi Invoice"]
+
+    I --> L["ERP menyediakan GRN Posted ke AP"]
+
+    K --> M["Finance AP 3-Way Matching"]
+
     L --> M
-    
-    M --> N{"Verifikasi Matches?"}
-    N -->|Ada Selisih| O1["Hold Invoice & Minta Klarifikasi / Revisi ke Supplier"]
-    N -->|Cocok| O["Asst HOD & HOD Finance / Accounting menyetujui Tagihan"]
-    
-    O --> P["Accounting (Treasury) menyiapkan transaksi di m-banking <br> (input nominal, rekening tujuan, & detail pembayaran)"]
-    P --> Q["Bu Janice meninjau & menyetujui Dokumen Invoice/Pelunasan"]
-    Q --> R["Bu Janice (Pin Transfer) menerbitkan Pembayaran"]
-    R --> S1["Accounting (Treasury) mengirim Bukti Bayar ke Supplier"]
 
-    I --> S["Accounting (Fixed Asset) menentukan & membuat Kategori Aset"]
-    S --> T{"Termasuk Aset?"}
-    T -->|Ya| U["Logistics membuat & menempel Barcode Aset"]
-    T -->|Tidak| V["Logistics menyiapkan Serah Terima barang Non-Aset"]
-    U --> W["Barang / Aset siap diambil oleh Requestor"]
-    V --> W
+    M --> N{"Matching Sesuai?"}
 
+    N -->|Tidak| N1["Hold & Klarifikasi"]
+
+    N -->|Ya| O["AP Invoice = Matched"]
+
+    O --> AP1["Finance AP Post AP Invoice<br/>Boleh sebelum / sesudah Realize<br/>tetapi wajib sebelum Finance Close"]
+
+    AP1 --> APJ["ERP Auto Posting AP Journal<br/>Dr Goods Receipt Clearing<br/>Cr Accounts Payable Control"]
+
+    APJ --> GL
+
+    O --> P["Finance AP membuat Cash Flow Prediction<br/>+ FinancePaymentWorkflow COD"]
+
+    P --> Q["Manager Finance Approve"]
+
+    Q --> R["Otomatis masuk Table Cash Flow Bu Janice"]
+
+    R --> S["Bu Janice Approve Payment List"]
+
+    S --> T["Selvia / Finance Create Payment Voucher COD<br/>ERP Generate VoucherNumber"]
+
+    T --> U["Manager Finance Approve Payment Voucher"]
+
+    U --> V["HOD Finance Approve Payment Voucher"]
+
+    V --> W["Accounting Treasury Prepare Transaction<br/>Pilih Supplier Bank + Company Bank<br/>ERP Freeze Payment Destination & Bank GL Provenance"]
+
+    W --> X["Accounting Treasury Release / Ready for Execution"]
+
+    X --> Y["Accounting Treasury Execute Actual Transfer"]
+
+    Y --> Y1["ERP Status = Transferred<br/>Record Executor + Amount + Reference + Time"]
+
+    Y1 --> Z["Accounting Treasury Upload Transfer Proof"]
+
+    Z --> ZA["Treasury / Finance-Accounting Verifier<br/>Verify Transfer Outcome"]
+
+    ZA --> ZB["ERP Status = Realized<br/>AP Paid Projection jika AP sudah Posted"]
+
+    Z --> PC["Purchasing mengirim Bukti Bayar ke Supplier"]
+
+    ZB --> RC["Finance Reconciliation<br/>Match dengan External Bank Settlement"]
+
+    RC --> RD{"Bank Evidence Sesuai?"}
+
+    RD -->|Tidak| RE["Hold Reconciliation / Klarifikasi"]
+
+    RD -->|Ya| RF["ERP Status = Reconciled"]
+
+    RF --> PJ{"Payment Journal M9 Eligible?<br/>COD + Exactly 1 AP Allocation<br/>Full Exact Match"}
+
+    PJ -->|Ya| PG["ERP Auto Payment Journal<br/>Dr Accounts Payable Control<br/>Cr Company Bank GL"]
+
+    PG --> GL
+
+    PJ -->|Tidak| PH["No Automatic Payment Journal<br/>Fail Closed / Future Accounting Scope"]
+
+    RF --> FC["Finance Close Check"]
+
+    AP1 --> FC
+
+    FC --> FCG{"All Allocation Complete<br/>All AP = Paid<br/>Proof + Reconciliation Complete?"}
+
+    FCG -->|Tidak| FCH["Finance Close Blocked"]
+
+    FCG -->|Ya| PO["Purchase Order Closed"]
+
+    I --> FA["GRN Asset / Non-Asset Classification<br/>Operational Metadata"]
+
+    FA --> FB{"Asset?"}
+
+    FB -->|Ya| FC2["Fixed Asset Handoff<br/>FUTURE CONTROLLED FLOW<br/>Asset Register / Capitalization / Depreciation belum canonical"]
+
+    FB -->|Tidak| FD["Normal Inventory / Serah Terima"]
 ```
 
-### Narasi Proses COD / Pembayaran Setelah Barang Diterima
+Ada satu nuance yang sekarang penting: untuk COD, **Realize boleh terjadi ketika allocated AP masih `Matched`**, tetapi AP itu belum boleh dianggap Finance Close complete. Kalau AP baru `Posted` setelah Realize, Paid projection dapat dilakukan setelah itu; Finance Close menunggu semua allocation lengkap dan AP canonical `Paid`. 
 
-1. Requestor membuat `MR`.
-2. `MR` disetujui oleh `Asst HOD`.
-3. Purchasing membuat `PO`.
-4. `PO` disetujui oleh `HOD Purchasing`, `GM`, dan `HOD Finance` untuk kontrol anggaran.
-5. `PO` dikirim ke Supplier.
-6. Supplier mengirimkan barang beserta `Surat Jalan` dan `Invoice`.
-7. Tim Logistics mencocokkan fisik barang yang datang dengan `Surat Jalan` dan dokumen `PO`.
-8. Jika fisik dan spesifikasi sesuai, Logistics membuat dan menyetujui `GRN` di ERP. (Jika tidak sesuai, Logistics membuat Laporan Retur).
-9. Secara terpisah, Resepsionis menerima berkas `Invoice` fisik dari Supplier dan menginput Log Penerimaan di ERP.
-10. `Finance (AP)` menerima berkas `Invoice` fisik dan memverifikasi Log Penerimaan di ERP.
-11. ERP secara otomatis membuat *Unbilled AP* dan mengirimkan data `GRN` ke modul `Finance (AP)`.
-12. `Finance (AP)` melakukan *3-Way Matching* di ERP dengan mencocokkan `PO`, `GRN`, dan `Invoice`.
-13. Jika hasil matching sesuai, tagihan disetujui oleh `Asst HOD` dan `HOD Finance / Accounting`.
-14. `Accounting (Treasury)` menyiapkan transaksi pembayaran di m-banking dengan menginput nominal, rekening tujuan, dan detail pembayaran lainnya.
-15. Bu Janice meninjau dokumen tagihan dan memberikan persetujuan pelunasan.
-16. `Bu Janice (Pin Transfer)` mengeksekusi transfer pembayaran via e-banking.
-17. `Accounting (Treasury)` menerbitkan voucher pembayaran di ERP dan mengirimkan bukti bayar ke Supplier.
-18. Paralel setelah `GRN` terbit, `Accounting (Fixed Asset)` menentukan dan membuat Kategori Aset di ERP.
-19. Logistics menerima data klasifikasi aset dari sistem. Jika barang termasuk aset, Logistics mencetak dan menempelkan barcode aset.
-20. Jika bukan aset, barang disiapkan untuk prosedur serah terima Non-Aset.
-21. Barang atau aset selesai diproses dan siap diambil oleh Requestor.
-
----
-Berikut adalah perbaikan dan penyelarasan untuk **Flow 2 (Flow DP Before GRN)** beserta narasi prosesnya.
-
-Perubahan telah disesuaikan dengan permintaanmu:
-
-1. **Penerbit Bukti Bayar Pelunasan ke Supplier:** Dikirim oleh **Purchasing**.
-2. **Status PO:** Ditutup secara resmi oleh **Finance (AP)** menjadi *Purchase Order (Closed)* setelah transaksi pembayaran pelunasan selesai diterbitkan oleh **Accounting (Treasury)**.
-3. **Penerimaan Resepsionis & Approval:** Menyelaraskan teks penerimaan berkas di Resepsionis serta persetujuan tagihan oleh `Asst HOD & HOD Finance / Accounting`.
+Dan AP accounting sekarang bukan saat Match. Recognition accounting AP baru pada **successful `Matched → Posted`**, menghasilkan `Dr GoodsReceiptClearing / Cr AccountsPayableControl`. 
 
 ---
 
-## 2. Flow DP Before GRN
-
-### Koreksi Utama
-
-* Konsistensi aktor eksekusi transfer pada `Bu Janice (Pin Transfer)` dengan tahapan persiapan transaksi di m-banking oleh `Accounting (Treasury)` sebelum PIN diinput.
-* Pengaliran data DP ke jurnal `Finance (Advance Payment)` di ERP.
-* Pengiriman bukti bayar pelunasan ke Supplier dilakukan oleh **Purchasing**, dilanjutkan dengan penutupan status **Purchase Order (Closed)** oleh **Finance (AP)**.
+# 2. Flow DP Before GRN
 
 ```mermaid
 flowchart TD
-    A["Requestor membuat MR"] --> B["Asst HOD menyetujui MR"]
-    B --> C["Purchasing membuat PO <br> (Detail Item & Klausul DP)"]
-    C --> D["HOD Purchasing / GM / HOD Finance menyetujui PO"]
-    D --> E["Accounting (Treasury) menyiapkan transaksi DP di m-banking <br> (input nominal, rekening tujuan, & detail pembayaran)"]
-    E --> F["Bu Janice meninjau PO & Invoice DP Supplier"]
-    F --> G["Bu Janice (Pin Transfer) menerbitkan Pembayaran DP"]
-    G --> H1["Accounting (Treasury) menerbitkan Pembayaran DP di ERP"]
-    
-    H1 --> H["Purchasing mengirim PO & Bukti DP ke Supplier"]
-    H1 --> I["Finance mencatat Uang Muka (DP) & Sisa Komitmen Pelunasan di ERP"]
-    
-    H --> J["Supplier mengirim barang, Surat Jalan, & Invoice Pelunasan"]
-    
-    J --> K["Logistics mencocokkan fisik barang dengan Surat Jalan & PO"]
-    K --> L{"Fisik & Spesifikasi Sesuai?"}
-    L -->|Tidak| M1["Logistics membuat Laporan Retur / Defect Report"]
-    L -->|Ya| M["Logistics membuat & menyetujui GRN di ERP"]
-    
-    J --> N["Resepsionis menerima Invoice Pelunasan fisik & dokumen pendukung"]
-    N --> O["Finance (AP) menerima berkas Invoice Pelunasan & Verifikasi Log ERP"]
-    
-    M --> P["ERP Otomatis menarik data GRN & Bukti DP ke AP"]
-    I --> P
-    
-    O --> Q["Finance (AP) melakukan 3-Way Matching di ERP <br> (PO, GRN, Invoice, & Bukti DP)"]
-    P --> Q
-    
-    Q --> R{"Verifikasi Matches?"}
-    R -->|Ada Selisih| S1["Hold Invoice & Minta Klarifikasi / Revisi ke Supplier"]
-    R -->|Cocok| S["Asst HOD & HOD Finance / Accounting menyetujui Tagihan"]
-    
-    S --> T["Accounting (Treasury) menyiapkan transaksi pelunasan di m-banking <br> (input nominal, rekening tujuan, & detail pembayaran)"]
-    T --> U["Bu Janice meninjau & menyetujui Dokumen Pelunasan"]
-    U --> V["Bu Janice (Pin Transfer) menerbitkan Pembayaran Pelunasan"]
-    V --> V1["Accounting (Treasury) menerbitkan Pembayaran Pelunasan di ERP"]
-    
-    V1 --> V2["Purchasing mengirim Bukti Bayar Pelunasan ke Supplier"]
-    V1 --> V3["Finance (AP) menutup status Purchase Order (Closed)"]
 
-    M --> W["Accounting (Fixed Asset) menentukan & membuat Kategori Aset"]
-    W --> X{"Termasuk Aset?"}
-    X -->|Ya| Y["Logistics membuat & menempel Barcode Aset"]
-    X -->|Tidak| Z1["Logistics menyiapkan Serah Terima barang Non-Aset"]
-    Y --> Z["Barang / Aset siap diambil oleh Requestor"]
-    Z1 --> Z
+    A["Requestor membuat MR"] --> B["Asst HOD Approve MR"]
 
+    B --> C["Purchasing membuat PO + Klausul DP"]
+
+    C --> D["HOD Purchasing / GM / HOD Finance Approve PO"]
+
+    D --> E["Finance AP Matching Data Pengajuan"]
+
+    E --> F["Finance AP membuat Cash Flow Prediction"]
+
+    F --> G["Manager Finance Approve"]
+
+    G --> H["Otomatis masuk Table Cash Flow Bu Janice"]
+
+    H --> I["Bu Janice Approve Payment List"]
+
+    I --> J["Selvia / Finance Create Payment Voucher<br/>DP + Pelunasan<br/>1 Economic Pair / 2 Payment Workflows<br/>2 VoucherNumber"]
+
+    J --> K["Manager Finance Approve"]
+
+    K --> L["HOD Finance Approve"]
+
+    L --> DP1["DP Workflow"]
+
+    L --> PV["Pelunasan Workflow<br/>Approved / Waiting Matching"]
+
+    DP1 --> M["Accounting Treasury Prepare DP<br/>Pilih Supplier Bank + Company Bank<br/>Freeze Destination & Bank GL"]
+
+    M --> M1["Accounting Treasury Release DP"]
+
+    M1 --> N["Accounting Treasury Execute Actual DP Transfer"]
+
+    N --> N1["ERP Status DP = Transferred"]
+
+    N1 --> O["Upload DP Transfer Proof"]
+
+    O --> P["Treasury / Finance-Accounting Verifier<br/>Verify DP"]
+
+    P --> Q["ERP Status DP = Realized"]
+
+    Q --> Q1["Finance / ERP Advance Payment Tracking<br/>Projection / Reference<br/>Bukan independent payment truth"]
+
+    Q --> DPB["Finance Reconcile DP<br/>vs External Bank Settlement"]
+
+    DPB --> DPC["DP = Reconciled"]
+
+    O --> R["Purchasing mengirim PO & Bukti DP ke Supplier"]
+
+    R --> S["Supplier mengirim Barang, Surat Jalan & Invoice Pelunasan"]
+
+    S --> T["Logistics Matching Barang"]
+
+    T --> U{"Sesuai?"}
+
+    U -->|Tidak| U1["Retur / Defect Report"]
+
+    U -->|Ya| V["Logistics membuat & Post / Approve GRN"]
+
+    V --> GJ["ERP Auto GRN Journal<br/>Dr Goods Receipt Debit<br/>Cr Goods Receipt Clearing"]
+
+    GJ --> GL["Accounting Journal / General Ledger"]
+
+    S --> W["Resepsionis menerima Invoice Pelunasan"]
+
+    W --> X["Finance AP Verifikasi Invoice"]
+
+    V --> Y["ERP menyediakan GRN + DP Workflow"]
+
+    X --> Z["Finance AP 3-Way Matching"]
+
+    Y --> Z
+
+    Z --> AA{"Matching Sesuai?"}
+
+    AA -->|Tidak| AA1["Hold & Klarifikasi"]
+
+    AA -->|Ya| AB["AP Invoice = Matched"]
+
+    AB --> AC["Finance AP menentukan Pelunasan Allocation<br/>Gross AP dikurangi DP secara canonical"]
+
+    AC --> AD["Finance AP Post AP Invoice<br/>Boleh sebelum / sesudah Realize<br/>Wajib sebelum Finance Close"]
+
+    AD --> APJ["ERP Auto AP Journal<br/>Dr Goods Receipt Clearing<br/>Cr Accounts Payable Control"]
+
+    APJ --> GL
+
+    AC --> AE["Accounting Treasury Prepare Pelunasan<br/>Freeze Supplier Bank + Company Bank"]
+
+    PV --> AE
+
+    AE --> AF["Accounting Treasury Release Pelunasan"]
+
+    AF --> AG["Accounting Treasury Execute Pelunasan"]
+
+    AG --> AH["ERP Status Pelunasan = Transferred"]
+
+    AH --> AI["Upload Transfer Proof Pelunasan"]
+
+    AI --> AJ["Treasury / Finance-Accounting Verifier<br/>Verify Pelunasan"]
+
+    AJ --> AK["Pelunasan = Realized<br/>AP Paid Projection jika AP sudah Posted"]
+
+    AI --> AL["Purchasing mengirim Bukti Bayar ke Supplier"]
+
+    AK --> AM["Finance Reconcile Pelunasan<br/>vs External Bank Settlement"]
+
+    AM --> AN["Pelunasan = Reconciled"]
+
+    AN --> PJ{"Payment Journal Eligible?<br/>Exactly 1 AP Allocation<br/>Full Exact Match"}
+
+    PJ -->|Ya| PJ1["ERP Auto Payment Journal<br/>Dr Accounts Payable Control<br/>Cr Company Bank GL"]
+
+    PJ1 --> GL
+
+    PJ -->|Tidak| PJ2["No Automatic Payment Journal<br/>Multi-AP / Unsupported Current M9 Scope"]
+
+    DPC --> CL["Finance Close DP + Pelunasan Pair"]
+
+    AN --> CL
+
+    AD --> CL
+
+    CL --> CG{"DP Reconciled + Pelunasan Reconciled<br/>Proof Complete<br/>All Allocated AP = Paid?"}
+
+    CG -->|Tidak| CH["Finance Close Blocked"]
+
+    CG -->|Ya| CI["Purchase Order Closed"]
+
+    V --> FA["GRN Asset / Non-Asset Classification<br/>Operational Metadata"]
+
+    FA --> FB{"Asset?"}
+
+    FB -->|Ya| FC["Fixed Asset Handoff<br/>FUTURE CONTROLLED FLOW"]
+
+    FB -->|Tidak| FD["Normal Inventory / Serah Terima"]
 ```
 
----
+Di sini ada koreksi yang cukup penting terhadap master flow lama kamu: **DP dan Pelunasan memang satu economic/package relationship, tetapi masing-masing adalah individual `FinancePaymentWorkflow` dan masing-masing punya VoucherNumber berbeda**. Jadi bukan satu nomor PV dipakai dua pembayaran. 
 
-### Narasi Proses DP Before GRN
+Untuk Pelunasan multi-AP, DP netting juga sudah punya aturan canonical: menggunakan keseluruhan eligible gross AP set, DP dibagi pro-rata, residual deterministic, dan total allocation harus sama persis dengan amount Pelunasan. 
 
-1. Requestor membuat `MR`.
-2. `MR` disetujui oleh `Asst HOD`.
-3. Purchasing membuat `PO` yang memuat detail item beserta klausul persetujuan `DP`.
-4. `PO` disetujui oleh `HOD Purchasing`, `GM`, dan `HOD Finance`.
-5. `Accounting (Treasury)` menyiapkan transaksi `DP` di m-banking dengan menginput nominal, rekening tujuan, dan detail pembayaran.
-6. Bu Janice meninjau dokumen `PO` dan pengajuan invoice `DP` dari Supplier.
-7. `Bu Janice (Pin Transfer)` mengeksekusi transfer pembayaran `DP`.
-8. `Accounting (Treasury)` menerbitkan bukti pembayaran `DP` di ERP.
-9. Purchasing mengirimkan `PO` resmi beserta bukti bayar `DP` ke Supplier agar pesanan diproses.
-10. Finance mencatat pembayaran tersebut sebagai Uang Muka (`Advance Payment`) dan mencatat sisa komitmen pelunasan di ERP.
-11. Supplier mengirimkan barang beserta `Surat Jalan` dan `Invoice Pelunasan`.
-12. Tim Logistics mencocokkan fisik barang dengan `Surat Jalan` dan `PO`. Jika sesuai, Logistics membuat dan menyetujui `GRN` di ERP.
-13. Resepsionis menerima `Invoice Pelunasan` fisik beserta dokumen pendukung lainnya dan menginput Log Penerimaan di ERP.
-14. `Finance (AP)` menerima berkas `Invoice Pelunasan` fisik dan memverifikasi Log Penerimaan di ERP.
-15. ERP secara otomatis menarik data `GRN` serta catatan pembayaran `DP` sebelumnya ke modul `Finance (AP)`.
-16. `Finance (AP)` melakukan *3-Way Matching* di ERP dengan mencocokkan `PO`, `GRN`, `Invoice Pelunasan`, dan `Bukti DP`.
-17. Tagihan disetujui oleh `Asst HOD` dan `HOD Finance / Accounting`.
-18. `Accounting (Treasury)` menyiapkan transaksi pelunasan di m-banking dengan menginput nominal, rekening tujuan, dan detail pembayaran.
-19. Bu Janice meninjau dan menyetujui dokumen pelunasan.
-20. `Bu Janice (Pin Transfer)` mengeksekusi transfer pembayaran pelunasan.
-21. `Accounting (Treasury)` menerbitkan bukti pembayaran pelunasan di ERP.
-22. **Purchasing** mengirimkan bukti bayar pelunasan ke Supplier.
-23. **Finance (AP)** memverifikasi kelengkapan seluruh transaksi dan mengubah status dokumen menjadi `Purchase Order (Closed)`.
-24. Paralel setelah `GRN` disetujui, `Accounting (Fixed Asset)` menentukan dan membuat Kategori Aset di ERP.
-25. Logistics menerima data filter aset; jika termasuk aset, Logistics mencetak dan menempelkan barcode aset. Jika non-aset, disiapkan untuk serah terima.
-26. Barang atau aset selesai diproses secara administrasi dan fisik, serta siap diambil oleh Requestor.
+Tetapi pada sisi accounting M9 saat ini ada boundary: **automatic Payment Journal hanya mendukung COD/Pelunasan dengan tepat satu AP allocation yang full exact-match**. Multi-AP Pelunasan tidak boleh diam-diam dibuat jurnal seolah-olah sama; harus fail-closed / menunggu future accounting scope. 
 
 ---
 
-## 3. Flow Pembayaran Full Sebelum GRN
-
-### Koreksi Utama
-
-* Menyelaraskan awal alur di mana Purchasing menerima dokumen Penawaran / Proforma Invoice dari Supplier sebagai dasar pengajuan bayar.
-* Menyelaraskan peran **Resepsionis** saat barang fisik dan Invoice Asli tiba untuk kebutuhan penutupan jurnal (*Closing Reconciliation*).
-* Memisahkan penutupan status PO oleh **Finance (AP)** dan pembuatan kategori aset oleh **Accounting (Fixed Asset)**.
+# 3. Flow Pembayaran Full Sebelum GRN
 
 ```mermaid
 flowchart TD
-    A["Requestor membuat MR"] --> B["Asst HOD menyetujui MR"]
-    B --> C["Purchasing menerima Penawaran / Proforma Invoice dari Supplier"]
-    C --> D["Purchasing membuat PO <br> (Melampirkan Dokumen Penawaran / Proforma Invoice)"]
-    D --> E["HOD Purchasing / GM / HOD Finance menyetujui PO"]
-    
-    E --> F["Accounting (Treasury) menyiapkan transaksi full payment di m-banking <br> (input nominal, rekening tujuan, & detail pembayaran)"]
-    F --> G["Bu Janice meninjau PO & Lampiran Dokumen Penawaran"]
-    G --> H["Bu Janice (Pin Transfer) menerbitkan Pembayaran Full"]
-    H --> I1["Accounting (Treasury) menerbitkan Pembayaran Full di ERP"]
-    
-    I1 --> I["Purchasing mengirim PO resmi & Bukti Bayar ke Supplier"]
-    I1 --> J["Finance mencatat Uang Muka Penuh (Advance Payment) di ERP"]
-    
-    I --> K["Supplier memproses & mengirim barang, Surat Jalan, & Invoice Asli"]
-    
-    K --> L["Logistics mencocokkan fisik barang dengan Surat Jalan & PO"]
-    L --> M{"Fisik & Spesifikasi Sesuai?"}
-    M -->|Tidak| N1["Logistics membuat Laporan Retur / Defect Report"]
-    M -->|Ya| N["Logistics membuat & menyetujui GRN di ERP"]
-    
-    K --> O["Resepsionis menerima Invoice Asli & menginput Log Penerimaan di ERP"]
-    O --> P["Finance (AP) menerima berkas Invoice Asli & Verifikasi Log ERP"]
-    
-    N --> Q["ERP Otomatis menarik data GRN & Status Pembayaran Full ke AP"]
-    J --> Q
-    
-    P --> R["Finance (AP) melakukan Closing Reconciliation di ERP <br> (PO, GRN, Invoice Asli, & Clearing Uang Muka Penuh)"]
-    Q --> R
-    
-    R --> S{"Reconciliation Matches?"}
-    S -->|Ada Selisih| T1["Hold & Minta Klarifikasi / Adjustment ke Supplier"]
-    S -->|Cocok| T["Finance (AP) menutup status Purchase Order (Closed)"]
-    
-    N --> U["Accounting (Fixed Asset) menentukan & membuat Kategori Aset"]
-    U --> V{"Termasuk Aset?"}
-    V -->|Ya| W["Logistics membuat & menempel Barcode Aset"]
-    V -->|Tidak| X["Logistics menyiapkan Serah Terima barang Non-Aset"]
-    W --> Y["Barang / Aset siap diambil oleh Requestor"]
-    X --> Y
 
+    A["Requestor membuat MR"] --> B["Asst HOD Approve MR"]
+
+    B --> C["Purchasing menerima Penawaran / Proforma Invoice"]
+
+    C --> D["Purchasing membuat PO"]
+
+    D --> E["HOD Purchasing / GM / HOD Finance Approve PO"]
+
+    E --> F["Finance AP Matching Data Pengajuan"]
+
+    F --> G["Finance AP membuat Cash Flow Prediction"]
+
+    G --> H["Manager Finance Approve"]
+
+    H --> I["Otomatis masuk Table Cash Flow Bu Janice"]
+
+    I --> J["Bu Janice Approve Payment List"]
+
+    J --> K["Selvia / Finance Create Payment Voucher Full<br/>ERP Generate VoucherNumber"]
+
+    K --> L["Manager Finance Approve"]
+
+    L --> M["HOD Finance Approve"]
+
+    M --> N["Accounting Treasury Prepare Full Payment<br/>Pilih Supplier Bank + Company Bank<br/>Freeze Destination & Bank GL"]
+
+    N --> N1["Accounting Treasury Release"]
+
+    N1 --> O["Accounting Treasury Execute Actual Full Payment"]
+
+    O --> P["ERP Status = Transferred<br/>Execution Snapshot Persisted"]
+
+    P --> Q["Upload Transfer Proof"]
+
+    Q --> R["Treasury / Finance-Accounting Verifier<br/>Verify Transfer"]
+
+    R --> S["ERP FullPayment Workflow = Realized"]
+
+    S --> S1["Finance / ERP Advance Payment Tracking<br/>No AP Allocation / No AP Paid Projection"]
+
+    Q --> T["Purchasing mengirim PO & Bukti Bayar ke Supplier"]
+
+    T --> U["Supplier mengirim Barang, Surat Jalan & Invoice Asli"]
+
+    U --> V["Logistics Matching Barang"]
+
+    V --> W{"Sesuai?"}
+
+    W -->|Tidak| W1["Retur / Defect Report"]
+
+    W -->|Ya| X["Logistics membuat & Post / Approve GRN"]
+
+    X --> GJ["ERP Auto GRN Journal<br/>Dr Goods Receipt Debit<br/>Cr Goods Receipt Clearing"]
+
+    GJ --> GL["Accounting Journal / General Ledger"]
+
+    U --> Y["Resepsionis menerima Invoice Asli"]
+
+    Y --> Z["Finance AP Verifikasi Invoice"]
+
+    X --> AA["ERP menyediakan GRN Posted"]
+
+    Z --> AB["Finance AP 3-Way Matching"]
+
+    AA --> AB
+
+    AB --> AC{"Matching Sesuai?"}
+
+    AC -->|Tidak| AC1["Hold & Adjustment / Klarifikasi"]
+
+    AC -->|Ya| AD["AP Invoice = Matched"]
+
+    AD --> AE["Finance AP Post AP Invoice"]
+
+    AE --> APJ["ERP Auto AP Journal<br/>Dr Goods Receipt Clearing<br/>Cr Accounts Payable Control"]
+
+    APJ --> GL
+
+    S --> AF["Finance Full Payment Reconciliation"]
+
+    X --> AF
+
+    AE --> AF
+
+    AF --> AG["Match External Bank Settlement<br/>+ PO Received<br/>+ GRN Posted<br/>+ AP / Amount Gates"]
+
+    AG --> AH{"Semua Gate Sesuai?"}
+
+    AH -->|Tidak| AI["Hold Reconciliation / Finance Close Blocked"]
+
+    AH -->|Ya| AJ["FullPayment Workflow = Reconciled<br/>FullPaymentClosedAt dibuat canonical"]
+
+    AJ --> PK["Payment Journal FullPayment<br/>NOT SUPPORTED in Current Narrow M9"]
+
+    AJ --> AK["Finance Close"]
+
+    AK --> AL["Purchase Order Closed"]
+
+    X --> FA["GRN Asset / Non-Asset Classification<br/>Operational Metadata"]
+
+    FA --> FB{"Asset?"}
+
+    FB -->|Ya| FC["Fixed Asset Handoff<br/>FUTURE CONTROLLED FLOW"]
+
+    FB -->|Tidak| FD["Normal Inventory / Serah Terima"]
 ```
 
-### Narasi Proses Pembayaran Full Sebelum GRN
+Full Payment Before GRN memang berbeda dengan COD. Canonical flow **tidak membuat AP `Paid` sebagai pembayaran kedua**, karena pembayaran supplier sebenarnya sudah terjadi sebelum GRN. 
 
-1. Requestor membuat `MR`.
-2. `MR` disetujui oleh `Asst HOD`.
-3. Purchasing menerima dokumen Penawaran / Proforma Invoice dari Supplier.
-4. Purchasing membuat `PO` dengan metode pembayaran lunas di awal dan melampirkan dokumen Penawaran/Proforma Invoice tersebut di ERP.
-5. `PO` disetujui oleh `HOD Purchasing`, `GM`, dan `HOD Finance`.
-6. `Accounting (Treasury)` menyiapkan transaksi pembayaran full di m-banking dengan menginput nominal, rekening tujuan, dan detail pembayaran.
-7. Bu Janice meninjau dokumen `PO` beserta lampiran dokumen Penawaran/Proforma Invoice.
-8. `Bu Janice (Pin Transfer)` mengeksekusi pembayaran lunas via e-banking.
-9. `Accounting (Treasury)` menerbitkan bukti pembayaran full di ERP.
-10. Purchasing mengirimkan `PO` resmi dan bukti bayar lunas ke Supplier agar barang diproses dan dikirim.
-11. Finance mencatat transaksi tersebut sebagai Uang Muka Penuh (*Advance Payment*) di ERP (belum diakui sebagai biaya/aset karena barang belum diterima).
-12. Supplier memproses pesanan dan mengirimkan barang beserta `Surat Jalan` dan `Invoice Asli` / Faktur Pajak.
-13. Logistics mencocokkan fisik barang yang datang dengan `Surat Jalan` dan `PO`. Jika sesuai, Logistics membuat dan menyetujui `GRN` di ERP.
-14. Resepsionis menerima `Invoice Asli` dari Supplier dan menginput Log Penerimaan di ERP.
-15. `Finance (AP)` menerima berkas `Invoice Asli` fisik dan memverifikasi Log Penerimaan di ERP.
-16. ERP secara otomatis menarik data `GRN` dan status pembayaran *Advance Payment* ke modul `Finance (AP)`.
-17. `Finance (AP)` melakukan *Closing Reconciliation* di ERP dengan mencocokkan `PO`, `GRN`, `Invoice Asli`, dan melakukan *clearing* akun Uang Muka Penuh.
-18. Jika reconciliation sesuai, `Finance (AP)` mengoperasikan penutupan status `Purchase Order` menjadi *Closed*.
-19. Paralel setelah `GRN` disetujui, `Accounting (Fixed Asset)` menentukan dan membuat Kategori Aset di ERP.
-20. Logistics menerima data filter aset; jika barang termasuk aset, Logistics mencetak dan menempelkan barcode aset.
-21. Jika barang non-aset, Logistics menyiapkan prosedur serah terima barang Non-Aset.
-22. Barang atau aset selesai diproses secara administrasi dan fisik, serta siap diambil oleh Requestor.
+Untuk FullPayment, `Reconciled` juga tidak boleh hanya karena transfer sudah ada. Existing FullPayment close tetap membutuhkan PO Received, GRN Posted, AP/amount requirements, lalu ditambah external bank settlement evidence. Marker `FullPaymentClosedAt` hanya boleh lahir dari canonical full-payment reconciliation tersebut. 
+
+Dan yang perlu kita tandai di master flow: **current M9 Payment Journal belum mencakup FullPaymentBeforeGrn maupun DownPayment**. Contract saat ini hanya COD dan Pelunasan exact one-AP allocation. Jadi jangan digambar seolah DP/Full sudah punya automatic bank/payment journal accounting yang complete. 
 
 ---
 
-## Catatan Tambahan untuk Implementasi ERP
+# 4. Standard Accounting Downstream yang Sekarang Sudah Terhubung
 
-* **Segregation of Duties (SoD):** Pemisahan peran antara `Logistics` (Inventory), `Resepsionis` (Document Control), `Finance (AP)` (Accounts Payable), `Accounting (Fixed Asset)` (Asset Management), `Accounting (Treasury)` (Payment Execution), dan `Bu Janice` (Approval & Transfer Authority) dalam diagram di atas sudah memenuhi kriteria kontrol internal standar ERP (*Good Corporate Governance*).
-* **Otomasi ERP:** Seluruh proses transisi data bertanda *ERP Otomatis* tidak lagi memerlukan penginputan ulang data secara manual oleh staff, sehingga mengurangi potensi *human error*.
+Ini bagian yang sebelumnya belum ada di master flow kamu, padahal sekarang sudah penting karena M9 kita sudah jauh berjalan.
+
+```mermaid
+flowchart TD
+
+    A["GRN Posted"] --> B["ERP Auto GRN Journal<br/>Receipt Recognition"]
+
+    C["AP Matched -> Posted"] --> D["ERP Auto AP Journal<br/>Liability Recognition"]
+
+    E["FinancePayment Reconciled<br/>COD / Eligible Pelunasan"] --> F["ERP Auto Payment Journal<br/>Settlement Recognition"]
+
+    B --> G["Canonical Journal & JournalLine"]
+
+    D --> G
+
+    F --> G
+
+    G --> H["General Ledger"]
+
+    H --> I["Trial Balance"]
+
+    I --> J["Profit & Loss"]
+
+    I --> K["Cumulative Balance"]
+
+    K --> L["Current-Year Earnings"]
+
+    L --> M["Balance Sheet"]
+
+    M --> N["Fiscal-Year Close"]
+
+    N --> O["S1 / S2 / S3 COMPLETE"]
+
+    O --> P["S4 NEXT ELIGIBLE<br/>NOT AUTHORIZED"]
+```
+
+GRN Journal, AP Journal, Company Bank Account provenance, Payment Journal, General Ledger, Trial Balance, Cumulative Balance, Current-Year Earnings, dan Balance Sheet sudah canonical. Fiscal-Year Close sendiri baru **S1/S2/S3 complete; overall belum complete dan S4 masih next eligible/not authorized**.  
+
+---
+
+## Standard Penutupan Semua Flow — UPDATED
+
+Versi lama:
+
+**Bu Janice Transfer → Treasury Record Realisasi → AP Reconciliation → PO Closed**
+
+sekarang sebaiknya diganti menjadi:
+
+```text
+Bu Janice / Director Approve Payment List
+↓
+Payment Voucher Approved
+↓
+Accounting Treasury Prepare
+- pilih Supplier Bank Account
+- pilih Company Bank Account
+- freeze beneficiary + company-bank/GL provenance
+↓
+Accounting Treasury Release
+↓
+Accounting Treasury Execute Actual Transfer
+↓
+Transferred
+- executor
+- actual transferred amount
+- transfer reference
+- transferred time
+↓
+Upload Transfer Proof
+↓
+Treasury / Finance-Accounting Verify
+↓
+Realized
+↓
+Purchasing Kirim Bukti Bayar ke Supplier
+↓
+Finance External Bank Settlement Reconciliation
+↓
+Reconciled
+↓
+Accounting Payment Journal
+HANYA jika workflow termasuk boundary M9 yang didukung
+↓
+Finance Close / Completion Gate
+↓
+Purchase Order Closed
+```
+
+`Transferred` dan `Realized` juga sekarang **bukan hal yang sama**. Transferred berarti actual transfer sudah dieksekusi dengan execution snapshot; proof boleh di-upload setelah itu, tetapi workflow tidak boleh menjadi Realized sebelum persisted transfer proof dan SoD gate terpenuhi. 
+
+Lalu `Realized` dan `Reconciled` juga berbeda: Realized membuktikan outcome transfer, sedangkan Reconciled berarti payment tersebut sudah matched dengan **external bank settlement evidence**. Close untuk transaksi baru membutuhkan reconciliation tersebut. 
+
+### Jadi struktur besar ERP kita sekarang
+
+```text
+MR
+→ Approval MR
+→ PO
+→ Approval PO
+→ Supplier
+→ GRN / Receiving
+→ Inventory
+→ GRN Accounting Journal
+→ AP Invoice
+→ 3-Way Matching
+→ AP Posted
+→ AP Accounting Journal
+→ Cash Flow
+→ Director Approval
+→ Payment Voucher
+→ Treasury Prepare
+→ Freeze Supplier Bank + Company Bank
+→ Execute Transfer
+→ Transfer Proof
+→ Realize
+→ External Bank Reconcile
+→ Payment Journal jika eligible
+→ Finance Close
+→ PO Close
+→ GL
+→ Trial Balance
+→ Financial Statements
+→ Fiscal-Year Close
+```
+
+Dengan bentuk ini, **flow COD, DP, dan Full tidak lagi berubah-ubah siapa yang punya payment truth**. Ketiganya memakai `FinancePaymentWorkflow`; yang berbeda hanyalah **timing GRN/AP, payment topology, allocation, dan accounting treatment yang memang berbeda secara bisnis**. 
+
+Dan satu hal yang sebaiknya kita pertahankan sebagai label merah di master flow: **Fixed Asset capitalization/depreciation serta complete DP/Full prepayment accounting belum boleh dianggap selesai hanya karena flow operasional pembayarannya sudah ada.** Itu masih boundary lanjutan, bukan sesuatu yang boleh ERP infer sendiri. 
